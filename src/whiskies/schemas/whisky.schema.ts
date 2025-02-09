@@ -4,6 +4,9 @@ import { Document } from 'mongoose';
 @Schema()
 export class Whisky extends Document {
   @Prop({ required: true })
+  asin: string;
+
+  @Prop()
   nom: string;
 
   @Prop()

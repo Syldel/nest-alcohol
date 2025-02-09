@@ -6,6 +6,9 @@ export class WhiskyType {
   id: string;
 
   @Field()
+  asin: string;
+
+  @Field()
   nom: string;
 
   @Field(() => Int, { nullable: true })
