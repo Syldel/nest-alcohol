@@ -1,11 +1,11 @@
 {
-  "name": "nest-whiskies",
+  "name": "nest-alcohol",
   "version": "0.0.1",
   "description": "Whiskies server with NestJS",
   "author": "Sylvain D.",
   "private": false,
   "license": "UNLICENSED",
-  "repository": "https://github.com/Syldel/nest-whiskies",
+  "repository": "https://github.com/Syldel/nest-alcohol",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
