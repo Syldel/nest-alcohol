@@ -6,6 +6,8 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
+import { WhiskyType } from 'src/whiskies/dto/whisky.dto';
+import { Observable, Subject } from 'rxjs';
 
 type Link = {
   asin?: string;
@@ -24,6 +26,12 @@ export class ExploreService {
   private websiteExploreHost: string;
 
   private notTranslatedKeys: string[] = [];
+
+  private whiskySubject = new Subject<WhiskyType>();
+
+  public getWhiskyStream(): Observable<WhiskyType> {
+    return this.whiskySubject.asObservable();
+  }
 
   constructor(
     private readonly configService: ConfigService,
@@ -85,6 +93,8 @@ export class ExploreService {
         this.links.length,
       );
       console.log('notTranslatedKeys', this.notTranslatedKeys);
+
+      this.whiskySubject.next(nextLink.data);
 
       break;
     }
