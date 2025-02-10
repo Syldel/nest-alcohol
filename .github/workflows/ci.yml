@@ -7,11 +7,25 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Test
+      - name: Checkout du code
+        uses: actions/checkout@v3
+
+      - name: Configurer Node.js et npm
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Vérifier la version de Node.js et npm
         run: |
-          npm install
-          npm run test
+          node -v
+          npm -v
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Exécuter les tests
+        run: npm run test
 
       - name: Deploy
         if: github.ref == 'refs/heads/main'
