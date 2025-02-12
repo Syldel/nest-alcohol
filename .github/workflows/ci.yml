@@ -13,7 +13,7 @@ jobs:
       - name: Configurer Node.js et npm
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 18.18.0
           cache: 'npm'
 
       - name: Vérifier la version de Node.js et npm
