@@ -7,7 +7,9 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WhiskiesModule } from './whiskies/whiskies.module';
+import { AlcoholModule } from './alcohol/alcohol.module';
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 @Module({
   imports: [
@@ -17,10 +19,12 @@ import { WhiskiesModule } from './whiskies/whiskies.module';
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
-      playground: true,
+      playground: !isProduction,
+      sortSchema: true,
+      debug: !isProduction,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI),
-    WhiskiesModule,
+    AlcoholModule,
   ],
   controllers: [AppController],
   providers: [AppService],

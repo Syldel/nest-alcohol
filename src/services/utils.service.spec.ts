@@ -15,7 +15,7 @@ describe('UtilsService', () => {
   });
 
   describe('waitSeconds', () => {
-    fit('should wait for specified milliseconds before resolving', async () => {
+    it('should wait for specified milliseconds before resolving', async () => {
       const startTime = Date.now();
       await utilsService.waitSeconds(1000);
       const endTime = Date.now();

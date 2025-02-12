@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Observable, Subject } from 'rxjs';
 
 import * as cheerio from 'cheerio';
 import puppeteer, { Browser, Page } from 'puppeteer';
 
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
-import { WhiskyType } from 'src/whiskies/dto/whisky.dto';
-import { Observable, Subject } from 'rxjs';
+
+import { Alcohol } from '../alcohol/entities/alcohol.entity';
 
 type Link = {
   asin?: string;
@@ -27,10 +28,10 @@ export class ExploreService {
 
   private notTranslatedKeys: string[] = [];
 
-  private whiskySubject = new Subject<WhiskyType>();
+  private alcoholSubject = new Subject<Alcohol>();
 
-  public getWhiskyStream(): Observable<WhiskyType> {
-    return this.whiskySubject.asObservable();
+  public getAlcoholStream(): Observable<Alcohol> {
+    return this.alcoholSubject.asObservable();
   }
 
   constructor(
@@ -94,7 +95,7 @@ export class ExploreService {
       );
       console.log('notTranslatedKeys', this.notTranslatedKeys);
 
-      this.whiskySubject.next(nextLink.data);
+      this.alcoholSubject.next(nextLink.data);
 
       break;
     }
