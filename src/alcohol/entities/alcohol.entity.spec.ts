@@ -1,5 +1,8 @@
 import { Alcohol } from './alcohol.entity';
-import { CreateAlcoholInput } from './create-alcohol-input.entity';
+import {
+  CreateAlcoholInput,
+  validateCreateAlcoholInput,
+} from './create-alcohol-input.entity';
 
 import { validate } from 'class-validator';
 
@@ -78,6 +81,51 @@ describe('Alcohol et CreateAlcoholInput', () => {
         input.name = 'Test name';
         const errors = await validate(input);
         expect(errors.length).toBe(0);
+      });
+    });
+
+    fdescribe('validateCreateAlcoholInput', () => {
+      it('should return empty array when input is valid', async () => {
+        const validInput = {
+          asin: 'B07BPLMSMC',
+          name: 'Test Alcohol',
+        };
+
+        const errors = await validateCreateAlcoholInput(validInput);
+
+        expect(errors).toHaveLength(0);
+      });
+
+      fit('should return validation errors when asin is missing', async () => {
+        const input = {
+          asin: undefined,
+          name: 'Test Alcohol',
+        };
+
+        const errors = await validateCreateAlcoholInput(input);
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0].constraints).toEqual({
+          isDefined: 'asin should not be null or undefined',
+          isNotEmpty: 'asin is required',
+          isString: 'asin must be a string',
+        });
+      });
+
+      it('should return validation errors when name is missing', async () => {
+        const input = {
+          asin: 'ASIN1234',
+          name: undefined,
+        };
+
+        const errors = await validateCreateAlcoholInput(input);
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0].constraints).toEqual({
+          isDefined: 'name should not be null or undefined',
+          isNotEmpty: 'name is required',
+          isString: 'name must be a string',
+        });
       });
     });
   });

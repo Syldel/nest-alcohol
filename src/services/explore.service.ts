@@ -30,6 +30,18 @@ export class ExploreService {
   private alcoholSubject = new Subject<Alcohol>();
 
   private targetKeyword = 'whisky';
+  private langCountryCode = 'fr_FR';
+
+  private _stopExploration = false;
+
+  public stopExploration(state: boolean): void {
+    this._stopExploration = state;
+    if (state) {
+      this.utilsService.coloredLog(ELogColor.FgRed, `STOP EXPLORATION!`);
+    } else {
+      this.utilsService.coloredLog(ELogColor.FgYellow, `START EXPLORATION!`);
+    }
+  }
 
   public getAlcoholStream(): Observable<Alcohol> {
     return this.alcoholSubject.asObservable();
@@ -80,11 +92,27 @@ export class ExploreService {
     let productData: any;
     let exploredLinks: number;
     let explorationPercent: string;
-    while (this.links.find((link) => link.explored === null)) {
+    while (
+      this.links.find((link) => link.explored === null) &&
+      !this._stopExploration
+    ) {
       nextLink = this.links.find((link) => link.explored === null);
+
       productData = await this.scraperWebsite(
         `${this.websiteExploreHost}${nextLink.url}`,
       );
+      if (productData) {
+        this.alcoholSubject.next(productData);
+      }
+
+      this.utilsService.coloredLog(ELogColor.FgCyan, `Wait 5s...`);
+      await this.utilsService.waitSeconds(5000); // Very important to wait the saving in database, maybe the exploration will be stop!
+
+      if (this._stopExploration) {
+        this.utilsService.coloredLog(ELogColor.FgRed, `> break while`);
+        break;
+      }
+
       nextLink.explored = Date.now();
       console.log('nextLink:', nextLink);
       exploredLinks = this.links.filter(
@@ -104,7 +132,8 @@ export class ExploreService {
       );
       console.log('notTranslatedKeys', this.notTranslatedKeys);
 
-      this.alcoholSubject.next(productData);
+      this.utilsService.coloredLog(ELogColor.FgCyan, `Wait 10s...`);
+      await this.utilsService.waitSeconds(10000);
 
       break;
     }
@@ -184,7 +213,7 @@ export class ExploreService {
       console.log('#nav-link-accountList', $(`#nav-link-accountList`).text());
       if ($(`#nav-link-accountList`).text().includes('Identifiez-vous')) {
         this.utilsService.coloredLog(ELogColor.FgRed, 'Not logged!');
-        // TODO: Stop exploration!
+        this.stopExploration(true);
         return;
       } else {
         const buttonId = 'amzn-ss-get-link-button';
@@ -197,6 +226,19 @@ export class ExploreService {
         await this.utilsService.waitSeconds(2000);
         await this.page.select(`#${dropdownId}`, selectTargetKey);
         await this.utilsService.waitSeconds(2000);
+
+        const trackingSelectValue = $(`#${dropdownId}`).val();
+        console.log('trackingSelectValue:', trackingSelectValue);
+
+        if (trackingSelectValue !== selectTargetKey) {
+          this.utilsService.coloredLog(
+            ELogColor.FgRed,
+            `Problem => trackingSelectValue is ${trackingSelectValue}`,
+          );
+          this.stopExploration(true);
+          return;
+        }
+
         await this.page.click(`#${getLinkButtonId}`);
         await this.utilsService.waitSeconds(2000);
 
@@ -204,7 +246,7 @@ export class ExploreService {
           const textarea = document.querySelector(sel) as HTMLTextAreaElement;
           return textarea ? textarea.value : null;
         }, `#${shortlinkTextarea}`);
-        console.log('shortlink', shortlink);
+        console.log('shortlink:', shortlink);
       }
 
       const dpClass = $('#dp').attr('class');
@@ -213,8 +255,10 @@ export class ExploreService {
         console.log('alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!');
         return;
       }
-      if (dpClass?.length > 0 && !dpClass.includes('fr_FR')) {
-        console.log('fr_FR IS NOT IN THE dpClass > RETURN!!!');
+      if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
+        console.log(
+          `${this.langCountryCode} IS NOT IN THE dpClass > RETURN!!!`,
+        );
         return;
       }
 
@@ -323,6 +367,7 @@ export class ExploreService {
           Saveur: 'flavor',
           "Nombre d'unités": 'unitCount',
           "Nombre d'articles": 'numberOfItems',
+          "Nombre d'article(s) dans l'emballage": 'numberOfItems',
           'Teneur en alcool': 'alcoholContent',
           'Type de régime': 'dietType',
           'Description du contenu du liquide': 'liquidContentsDescription',
@@ -336,7 +381,6 @@ export class ExploreService {
           Âge: 'age',
           "Pays d'origine": 'countryOfOrigin',
           Certification: 'certification',
-          "Nombre d'article(s) dans l'emballage": 'numberOfItemsInPackage',
           'Volume indicatif': 'approximateVolume',
           Fabricant: 'manufacturer',
           'Région de production': 'productionRegion',
@@ -410,7 +454,7 @@ export class ExploreService {
 
         console.log(infosTech);
         const mergedInfos = { ...infos, ...infosTech };
-        console.log('mergedInfos', mergedInfos);
+        console.log('mergedInfos:', mergedInfos);
 
         /* ******************************* */
 
@@ -429,13 +473,13 @@ export class ExploreService {
 
         return {
           asin: this.extractASIN(canonicalLink),
-          canonicalLink,
+          // canonicalLink,
           timestamp: {
             created: Date.now(),
           },
-          metas,
-          title,
-          productTitle,
+          // metas,
+          // title,
+          name: productTitle,
           breadcrumbs,
           averageCustomerReviews,
           price,
@@ -450,6 +494,8 @@ export class ExploreService {
             images: imagesDescription,
           },
           shortlink,
+          type: this.targetKeyword,
+          langCountryCode: this.langCountryCode,
         };
       }
     }
@@ -486,12 +532,15 @@ export class ExploreService {
         if (!productId && href.startsWith('/vdp/')) {
           this.utilsService.coloredLog(
             ELogColor.FgRed,
-            'vdp > Lien non ajouté!\n',
+            'vdp => Lien non ajouté!\n',
           );
           return;
         }
         if (productId && this.links.find((obj) => obj.asin === productId)) {
-          this.utilsService.coloredLog(ELogColor.FgRed, 'Lien non ajouté!\n');
+          this.utilsService.coloredLog(
+            ELogColor.FgRed,
+            'ASIN already in links => Lien non ajouté!\n',
+          );
           return;
         }
         this.utilsService.coloredLog(ELogColor.FgGreen, 'Lien ajouté!\n');

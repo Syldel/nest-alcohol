@@ -8,10 +8,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { takeUntil } from 'rxjs';
-import { validate } from 'class-validator';
 
 import { Alcohol } from './entities/alcohol.entity';
-import { CreateAlcoholInput } from './entities/create-alcohol-input.entity';
+import {
+  CreateAlcoholInput,
+  validateCreateAlcoholInput,
+} from './entities/create-alcohol-input.entity';
 import { BaseService, ExploreService } from '../services';
 
 @Injectable()
@@ -54,9 +56,7 @@ export class AlcoholService extends BaseService implements OnModuleInit {
   }
 
   async create(input: CreateAlcoholInput): Promise<Alcohol> {
-    const instance = new CreateAlcoholInput();
-    Object.assign(instance, input);
-    const errors = await validate(instance);
+    const errors = await validateCreateAlcoholInput(input);
     if (errors.length > 0) {
       errors.forEach((err) =>
         console.log(
@@ -64,6 +64,7 @@ export class AlcoholService extends BaseService implements OnModuleInit {
           `> ${Object.values(err.constraints || {}).join(', ')}`,
         ),
       );
+      this.exploreService.stopExploration(true);
       throw new BadRequestException(errors);
     }
 
@@ -82,6 +83,7 @@ export class AlcoholService extends BaseService implements OnModuleInit {
     const savedAlcohol = await newAlcohol.save();
 
     if (!savedAlcohol) {
+      this.exploreService.stopExploration(true);
       throw new InternalServerErrorException(
         "Erreur lors de l'enregistrement du alcohol.",
       );

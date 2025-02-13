@@ -1,6 +1,12 @@
 import { Field, InputType, OmitType, PartialType } from '@nestjs/graphql';
 import { Alcohol } from './alcohol.entity';
-import { IsDefined, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsDefined,
+  IsNotEmpty,
+  IsString,
+  validate,
+  ValidationError,
+} from 'class-validator';
 
 @InputType()
 export class CreateAlcoholInput extends PartialType(
@@ -21,4 +27,12 @@ export class CreateAlcoholInput extends PartialType(
   @IsDefined()
   @IsNotEmpty({ message: 'name is required' })
   name: string;
+}
+
+export async function validateCreateAlcoholInput(
+  input: CreateAlcoholInput,
+): Promise<ValidationError[]> {
+  const instance = new CreateAlcoholInput();
+  Object.assign(instance, input);
+  return validate(instance);
 }
