@@ -49,4 +49,27 @@ export class UtilsService {
   public async waitSeconds(ms: number) {
     await firstValueFrom(timer(ms).pipe(take(1)));
   }
+
+  public getLastElement(input: string, delimiter: string): string {
+    if (!input) return input;
+    const parts = input.split(delimiter);
+    return parts[parts.length - 1];
+  }
+
+  public getAllButLast(input: string, delimiter: string): string {
+    if (!input) return input;
+    const parts = input.split(delimiter);
+    if (parts.length <= 1) return input;
+    parts.pop();
+    return parts.join(delimiter);
+  }
+
+  public roundPercent(valeur1: number, valeur2: number): string {
+    if (valeur2 === 0) {
+      return 'Division par zéro impossible';
+    }
+    const pourcentage = (valeur1 / valeur2) * 100;
+    const pourcentageArrondi = Math.round(pourcentage);
+    return `${pourcentageArrondi}%`;
+  }
 }

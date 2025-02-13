@@ -19,6 +19,16 @@ export class Alcohol extends Document {
   @Prop()
   @IsString()
   name: string;
+
+  @Field()
+  @Prop()
+  @IsString()
+  type: string;
+
+  @Field()
+  @Prop()
+  @IsString()
+  shortlink: string;
 }
 
 export const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
