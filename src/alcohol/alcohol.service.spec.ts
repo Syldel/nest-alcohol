@@ -4,7 +4,6 @@ import { getModelToken } from '@nestjs/mongoose';
 import { AlcoholService } from './alcohol.service';
 import { CreateAlcoholInput } from './entities/create-alcohol-input.entity';
 import { Alcohol } from './entities/alcohol.entity';
-import { ExploreModule } from '../services/explore.module';
 
 describe('AlcoholService', () => {
   let module: TestingModule;
@@ -33,7 +32,7 @@ describe('AlcoholService', () => {
     };
 
     module = await Test.createTestingModule({
-      imports: [ExploreModule],
+      imports: [],
       providers: [
         {
           provide: getModelToken(Alcohol.name),

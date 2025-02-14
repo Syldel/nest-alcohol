@@ -7,7 +7,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AlcoholModule } from './alcohol/alcohol.module';
+import { ExploreModule } from './services/explore.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -24,7 +24,7 @@ const isProduction = process.env.NODE_ENV === 'production';
       debug: !isProduction,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI),
-    AlcoholModule,
+    ExploreModule,
   ],
   controllers: [AppController],
   providers: [AppService],

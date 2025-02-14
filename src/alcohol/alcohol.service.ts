@@ -3,52 +3,23 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
-  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { takeUntil } from 'rxjs';
 
 import { Alcohol } from './entities/alcohol.entity';
 import {
   CreateAlcoholInput,
   validateCreateAlcoholInput,
 } from './entities/create-alcohol-input.entity';
-import { BaseService, ExploreService } from '../services';
+import { BaseService } from '../services';
 
 @Injectable()
-export class AlcoholService extends BaseService implements OnModuleInit {
+export class AlcoholService extends BaseService {
   constructor(
     @InjectModel(Alcohol.name) private readonly alcoholModel: Model<Alcohol>,
-    private readonly exploreService: ExploreService,
   ) {
     super();
-  }
-
-  async onModuleInit() {
-    this.listenToAlcoholEvents();
-    this.exploreService.start();
-  }
-
-  private async createAlcohol(alcoholData: Alcohol) {
-    try {
-      await this.create(alcoholData);
-      this.logger.log(`Alcohol créé : ${JSON.stringify(alcoholData)}`);
-    } catch (error) {
-      this.logger.warn(`Échec de la création du alcohol : ${error.message}`);
-    }
-  }
-
-  private listenToAlcoholEvents() {
-    this.exploreService
-      .getAlcoholStream()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (alcohol: Alcohol) => {
-          this.createAlcohol(alcohol);
-        },
-        error: (err) => this.logger.error('❌ Erreur :', err),
-      });
   }
 
   async findAll(): Promise<Alcohol[]> {
@@ -64,7 +35,6 @@ export class AlcoholService extends BaseService implements OnModuleInit {
           `> ${Object.values(err.constraints || {}).join(', ')}`,
         ),
       );
-      this.exploreService.stopExploration(true);
       throw new BadRequestException(errors);
     }
 
@@ -83,7 +53,6 @@ export class AlcoholService extends BaseService implements OnModuleInit {
     const savedAlcohol = await newAlcohol.save();
 
     if (!savedAlcohol) {
-      this.exploreService.stopExploration(true);
       throw new InternalServerErrorException(
         "Erreur lors de l'enregistrement du alcohol.",
       );

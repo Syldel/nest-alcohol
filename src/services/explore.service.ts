@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, Subject } from 'rxjs';
 
 import * as cheerio from 'cheerio';
 import puppeteer, { Browser, Page } from 'puppeteer';
@@ -8,7 +7,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 
-import { Alcohol } from '../alcohol/entities/alcohol.entity';
+import { AlcoholService } from '../alcohol/alcohol.service';
 
 type Link = {
   asin?: string;
@@ -18,7 +17,7 @@ type Link = {
 };
 
 @Injectable()
-export class ExploreService {
+export class ExploreService implements OnModuleInit {
   private links: Link[];
   private page: Page;
   private browser: Browser;
@@ -26,8 +25,6 @@ export class ExploreService {
   private websiteExploreHost: string;
 
   private notTranslatedKeys: string[] = [];
-
-  private alcoholSubject = new Subject<Alcohol>();
 
   private targetKeyword = 'whisky';
   private langCountryCode = 'fr_FR';
@@ -43,18 +40,19 @@ export class ExploreService {
     }
   }
 
-  public getAlcoholStream(): Observable<Alcohol> {
-    return this.alcoholSubject.asObservable();
-  }
-
   constructor(
     private readonly configService: ConfigService,
     private readonly utilsService: UtilsService,
     private readonly jsonService: JsonService,
+    private readonly alcoholService: AlcoholService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
     );
+  }
+
+  onModuleInit() {
+    this.start();
   }
 
   public async start() {
@@ -102,11 +100,19 @@ export class ExploreService {
         `${this.websiteExploreHost}${nextLink.url}`,
       );
       if (productData) {
-        this.alcoholSubject.next(productData);
+        try {
+          await this.alcoholService.create(productData);
+        } catch (error) {
+          if (error instanceof ConflictException) {
+            this.utilsService.coloredLog(
+              ELogColor.FgYellow,
+              `Échec de la création du alcohol : ${error.message}`,
+            );
+          } else {
+            this.stopExploration(true);
+          }
+        }
       }
-
-      this.utilsService.coloredLog(ELogColor.FgCyan, `Wait 5s...`);
-      await this.utilsService.waitSeconds(5000); // Very important to wait the saving in database, maybe the exploration will be stop!
 
       if (this._stopExploration) {
         this.utilsService.coloredLog(ELogColor.FgRed, `> break while`);
@@ -246,7 +252,7 @@ export class ExploreService {
           const textarea = document.querySelector(sel) as HTMLTextAreaElement;
           return textarea ? textarea.value : null;
         }, `#${shortlinkTextarea}`);
-        console.log('shortlink:', shortlink);
+        console.log('shortlink:', shortlink, '\n');
       }
 
       const dpClass = $('#dp').attr('class');
@@ -334,8 +340,8 @@ export class ExploreService {
         //     ?.trim(),
         // );
 
-        //const landingImage = $('#ppd img#landingImage').attr('src');
-        //console.log('landingImage src:', landingImage);
+        const landingImage = $('#ppd img#landingImage').attr('src');
+        console.log('landingImage src:', landingImage);
 
         const dynamicImage = JSON.parse(
           $('#ppd img#landingImage').attr('data-a-dynamic-image') || '{}',
@@ -359,7 +365,6 @@ export class ExploreService {
             tableData[key] = value;
           }
         });
-        //console.log('tableData', tableData);
 
         const translations = {
           Marque: 'brand',
@@ -414,8 +419,6 @@ export class ExploreService {
           }
         }
 
-        console.log(infos);
-
         /* ******************************* */
         const featureBullets: string[] = [];
         $('#ppd #feature-bullets li .a-list-item').each((i, element) => {
@@ -434,7 +437,6 @@ export class ExploreService {
             tableTechData[key] = value;
           }
         });
-        //console.log('tableTechData', tableTechData);
 
         const infosTech = {};
 
@@ -452,7 +454,6 @@ export class ExploreService {
           }
         }
 
-        console.log(infosTech);
         const mergedInfos = { ...infos, ...infosTech };
         console.log('mergedInfos:', mergedInfos);
 
@@ -469,7 +470,7 @@ export class ExploreService {
         ).each((i, element) => {
           imagesDescription.push($(element).attr('data-src'));
         });
-        console.log('images:', imagesDescription);
+        console.log('imagesDescription:', imagesDescription);
 
         return {
           asin: this.extractASIN(canonicalLink),
@@ -484,7 +485,7 @@ export class ExploreService {
           averageCustomerReviews,
           price,
           image: {
-            landing: dynamicImage,
+            landing: dynamicImage, // landingImage ?
             thumbnail: thumbnailImage,
           },
           infos: mergedInfos,

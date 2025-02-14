@@ -1,16 +1,38 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 
 import { ExploreService } from './explore.service';
-import { ExploreModule } from './explore.module';
+import { UtilsService } from './utils.service';
+import { JsonService } from './json.service';
+import { AlcoholService } from '../alcohol/alcohol.service';
 
 describe('ExploreService', () => {
   let app: TestingModule;
   let exploreService: ExploreService;
+  let mockAlcoholService: jest.Mocked<AlcoholService>;
 
   beforeAll(async () => {
+    mockAlcoholService = {
+      findAll: jest.fn().mockReturnValue(['Mock Whiskey', 'Mock Vodka']),
+      // findOne: jest.fn().mockImplementation((id: number) => `Mock Alcohol ${id}`),
+      create: jest
+        .fn()
+        .mockImplementation((data: any) => `Mock Alcohol ${data.name} created`),
+      onModuleDestroy: jest.fn(),
+    } as unknown as jest.Mocked<AlcoholService>;
+
     app = await Test.createTestingModule({
-      imports: [ExploreModule],
-      providers: [],
+      imports: [],
+      providers: [
+        {
+          provide: AlcoholService,
+          useValue: mockAlcoholService,
+        },
+        ConfigService,
+        ExploreService,
+        UtilsService,
+        JsonService,
+      ],
     }).compile();
 
     exploreService = app.get<ExploreService>(ExploreService);
