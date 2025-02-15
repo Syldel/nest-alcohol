@@ -148,7 +148,7 @@ export class ExploreService implements OnModuleInit {
   }
 
   async initPuppeteer() {
-    this.browser = await puppeteer.launch();
+    this.browser = await puppeteer.launch({ headless: true });
 
     // Définir les cookies d'authentification
     const cookieJsonFileName = `jsons/cookie.json`;
@@ -340,16 +340,9 @@ export class ExploreService implements OnModuleInit {
         //     ?.trim(),
         // );
 
-        const landingImage = $('#ppd img#landingImage').attr('src');
-        console.log('landingImage src:', landingImage);
-
-        const dynamicImage = JSON.parse(
-          $('#ppd img#landingImage').attr('data-a-dynamic-image') || '{}',
-        );
-        console.log('landingImage dynamicImage:', dynamicImage);
-
-        const thumbnailImage = $('#ppd .imageThumbnail img').attr('src');
-        console.log('thumbnailImage src:', thumbnailImage);
+        const { images, thumbnails } = await this.getViewerImages($);
+        console.log('images:', images);
+        console.log('thumbnails:', thumbnails);
 
         /* ******************************* */
 
@@ -400,6 +393,7 @@ export class ExploreService implements OnModuleInit {
           Spécialité: 'speciality',
           'Conditions de conservation': 'storageConditions',
           Millésime: 'vintage',
+          'Référence constructeur': 'manufacturerReference',
         };
 
         const infos = {};
@@ -410,7 +404,10 @@ export class ExploreService implements OnModuleInit {
           } else {
             // Gérer les clés non traduites (facultatif)
             infos[key] = tableData[key]; // Conserver la clé originale
-            console.warn(`Clé non traduite : ${key}`);
+            this.utilsService.coloredLog(
+              ELogColor.FgMagenta,
+              `Clé non traduite : ${key}`,
+            );
             if (!this.notTranslatedKeys.find((val) => val === key)) {
               this.notTranslatedKeys.push(key);
             } else {
@@ -465,11 +462,13 @@ export class ExploreService implements OnModuleInit {
         /* ******************************* */
 
         const imagesDescription: string[] = [];
-        $(
-          '#dp #aplus .desktop .aplus-module-wrapper.aplus-3p-fixed-width img',
-        ).each((i, element) => {
-          imagesDescription.push($(element).attr('data-src'));
-        });
+        let imgDescSrc: string;
+        $('#dp #aplus .desktop .aplus-module')
+          .not('.aplus-brand-story-hero')
+          .each((i, element) => {
+            imgDescSrc = $(element).find('img').attr('data-src');
+            if (imgDescSrc) imagesDescription.push(imgDescSrc);
+          });
         console.log('imagesDescription:', imagesDescription);
 
         return {
@@ -484,9 +483,9 @@ export class ExploreService implements OnModuleInit {
           breadcrumbs,
           averageCustomerReviews,
           price,
-          image: {
-            landing: dynamicImage, // landingImage ?
-            thumbnail: thumbnailImage,
+          images: {
+            bigs: images,
+            thumbnails,
           },
           infos: mergedInfos,
           featureBullets,
@@ -605,5 +604,75 @@ export class ExploreService implements OnModuleInit {
     console.log('');
 
     this.manageLinkAdding(href, thumbSrc);
+  }
+
+  private async getViewerImages($: cheerio.CheerioAPI) {
+    const thumbnails: string[] = [];
+    $('#ppd #altImages .imageThumbnail').each((i, row) => {
+      //console.log('thumbnailImage src:', $(row).find('img').attr('src'));
+
+      thumbnails.push($(row).find('img').attr('src'));
+    });
+
+    const thumbnailEls = await this.page.$$('#ppd .imageThumbnail');
+
+    for (const thumbnail of thumbnailEls) {
+      try {
+        const boundingBox = await this.page.evaluate((el) => {
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            return {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2,
+            };
+          } else {
+            return null;
+          }
+        }, thumbnail);
+
+        //console.log('boundingBox', boundingBox);
+
+        if (boundingBox) {
+          await this.page.mouse.move(boundingBox.x, boundingBox.y);
+
+          await this.page.evaluate((scrollAmount) => {
+            window.scrollBy(0, scrollAmount);
+          }, 60);
+
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        } else {
+          console.error(
+            'Could not get bounding box for a thumbnail (element not found).',
+          );
+        }
+      } catch (innerError) {
+        console.error('Error during hover:', innerError);
+      }
+    }
+
+    // Récupérer le contenu HTML mis à jour
+    const htmlUpdated = await this.page.content();
+    $ = cheerio.load(htmlUpdated);
+
+    const images: string[] = [];
+    $('#ppd #main-image-container img.a-dynamic-image').each((i, row) => {
+      //console.log('mainImage src:', $(row).attr('src'));
+      images.push($(row).attr('src'));
+    });
+
+    return {
+      images: images.map((url) => this.extractImageIdFromUrl(url)),
+      thumbnails: thumbnails.map((url) => this.extractImageIdFromUrl(url)),
+    };
+  }
+
+  private extractImageIdFromUrl(url: string): string {
+    const match = url.match(
+      /([a-zA-Z0-9-_+]+)\.[a-zA-Z0-9_,]*\.?[a-zA-Z]{3,4}$/,
+    );
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
   }
 }

@@ -109,4 +109,72 @@ describe('ExploreService', () => {
       expect(result).toBe('B07PXGQC1Q');
     });
   });
+
+  describe('extractImageIdFromUrl', () => {
+    const urlStart = 'https://m.media-mywebsite.com/images/I/';
+    const extractImageId = (url: string) =>
+      exploreService['extractImageIdFromUrl'](url);
+
+    it('should extract the ID from URLs', () => {
+      expect(extractImageId(`${urlStart}71Tx4KY27pL._AC_SX569_.jpg`)).toBe(
+        '71Tx4KY27pL',
+      );
+      expect(
+        extractImageId(`${urlStart}31n2Lf75z+L._AC_UF456,456_SR456,456_.jpg`),
+      ).toBe('31n2Lf75z+L');
+      expect(extractImageId(`${urlStart}41Vbn6BMbnL.jpg`)).toBe('41Vbn6BMbnL');
+      expect(extractImageId(`${urlStart}31oRDoYfpmL._AC_SR38,50_.webp`)).toBe(
+        '31oRDoYfpmL',
+      );
+      expect(extractImageId(`${urlStart}31oRDoYfpmL._AC_SR38,50_.png`)).toBe(
+        '31oRDoYfpmL',
+      );
+      expect(extractImageId(`${urlStart}31oRDoYfpmL._AC_SR38,50_.jpg`)).toBe(
+        '31oRDoYfpmL',
+      );
+      expect(extractImageId(`${urlStart}51DF9UDYU-L._AC_SR38,50_.jpg`)).toBe(
+        '51DF9UDYU-L',
+      );
+      expect(extractImageId(`${urlStart}71Y5e2sa2cL._AC_SX342_.jpg`)).toBe(
+        '71Y5e2sa2cL',
+      );
+      expect(
+        extractImageId(`${urlStart}61pYbK0-aZL._AC_UL165_SR165,165_.jpg`),
+      ).toBe('61pYbK0-aZL');
+      expect(
+        extractImageId(
+          `${urlStart}919NLiFH7PL._AC_QL95_SX300_SY250_FMwebp_.jpg`,
+        ),
+      ).toBe('919NLiFH7PL');
+      expect(extractImageId(`${urlStart}51rligm7F-L.SX522_.jpg`)).toBe(
+        '51rligm7F-L',
+      );
+      expect(
+        extractImageId(`${urlStart}51-b9+q4PBL._AC_UF480,480_SR480,480_.jpg`),
+      ).toBe('51-b9+q4PBL');
+      expect(extractImageId(`${urlStart}716ss+MMUvL._AC_SX522_.jpg`)).toBe(
+        '716ss+MMUvL',
+      );
+      expect(
+        extractImageId(`${urlStart}31n2Lf75z+L._AC_UF456,456_SR456,456_.jpg`),
+      ).toBe('31n2Lf75z+L');
+      expect(extractImageId(`${urlStart}61zvnW0cNOL._AC_SL1500_.jpg`)).toBe(
+        '61zvnW0cNOL',
+      );
+      expect(
+        extractImageId(`${urlStart}71T3+UKOgfL._AC_UL232_SR232,232_.jpg`),
+      ).toBe('71T3+UKOgfL');
+      expect(
+        extractImageId(`${urlStart}617qDXACIxL._AC_something_else_.jpg`),
+      ).toBe('617qDXACIxL');
+      expect(
+        extractImageId(`${urlStart}anotherId._AC_ANOTHER_FORMAT_123_.jpg`),
+      ).toBe('anotherId');
+    });
+
+    it('should return null for invalid URLs', () => {
+      expect(extractImageId(`${urlStart}invalidURL`)).toBeNull();
+      expect(extractImageId('URL_sans_format')).toBeNull();
+    });
+  });
 });
