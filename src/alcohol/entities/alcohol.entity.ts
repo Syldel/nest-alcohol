@@ -8,7 +8,7 @@ import { IsString } from 'class-validator';
 export class Alcohol extends Document {
   @Field(() => ID)
   @Prop({ type: Types.ObjectId })
-  id: string;
+  _id: string;
 
   @Field()
   @Prop()

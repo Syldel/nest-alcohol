@@ -6,7 +6,7 @@
 
 ## Description
 
-Whiskies server with NestJS and GraphQL connected to MongoDB.
+Alcohol server with NestJS and GraphQL connected to MongoDB.
 
 ## Project setup
 
@@ -38,6 +38,49 @@ $ npm run test:e2e
 
 # test coverage
 $ npm run test:cov
+```
+
+## Use GraphQL
+
+In playground :
+```json
+{
+  alcohols {
+    _id
+    asin
+    name
+  }
+}
+```
+
+You will get something like :
+```json
+{
+  "data": {
+    "alcohols": [
+      {
+        "_id": "67aa38b1bc471848fa9193c9",
+        "asin": "654321",
+        "name": "Glenfiddich"
+      },
+      {
+        "_id": "67af4c891e0831d9e34f6abd",
+        "asin": "B0D9P873MJ",
+        "name": "SirDavis Rye Whisky 44% 70cL"
+      }
+    ]
+  }
+}
+```
+
+With CURL:
+
+```bash
+#!/bin/bash
+
+QUERY='{ alcohols { _id asin name } }'
+
+curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"$QUERY\"}" http://localhost:3000/graphql
 ```
 
 ## Deployment
