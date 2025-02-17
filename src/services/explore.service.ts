@@ -344,6 +344,27 @@ export class ExploreService implements OnModuleInit {
         console.log('images:', images);
         console.log('thumbnails:', thumbnails);
 
+        if (images.length !== thumbnails.length) {
+          this.utilsService.coloredLog(
+            ELogColor.FgRed,
+            `images and thumbnails have not the same length => ${images.length} !== ${thumbnails.length}`,
+          );
+          this.stopExploration(true);
+          return;
+        }
+
+        if (
+          images.some((id) => id === null || id === undefined || id === '') ||
+          thumbnails.some((id) => id === null || id === undefined || id === '')
+        ) {
+          this.utilsService.coloredLog(
+            ELogColor.FgRed,
+            `At least one id in images or thumbnails is null, undefined or empty!`,
+          );
+          this.stopExploration(true);
+          return;
+        }
+
         /* ******************************* */
 
         const tableData = {};
