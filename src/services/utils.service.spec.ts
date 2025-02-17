@@ -96,4 +96,45 @@ describe('UtilsService', () => {
       expect(result4).toBe('333%');
     });
   });
+
+  describe('getFileExtension', () => {
+    it('should return extension when filename has single extension', () => {
+      const fileName = 'test.txt';
+      const result = utilsService.getFileExtension(fileName);
+      expect(result).toBe('txt');
+    });
+
+    it('should return null when input is null', () => {
+      const result = utilsService.getFileExtension(null);
+      expect(result).toBeNull();
+    });
+
+    it('should return undefined when input is undefined', () => {
+      const result = utilsService.getFileExtension(undefined);
+      expect(result).toBeUndefined();
+    });
+
+    it('should return empty string when input is empty string', () => {
+      const result = utilsService.getFileExtension('');
+      expect(result).toBe('');
+    });
+
+    it('should return correct extension when filename has uppercase and lowercase extensions', () => {
+      const fileName = 'example.FILE';
+      const result = utilsService.getFileExtension(fileName);
+      expect(result).toBe('FILE');
+    });
+
+    it('should return correct extension when filename contains special characters', () => {
+      const fileName = 'file@name#with$special%chars!.ext';
+      const result = utilsService.getFileExtension(fileName);
+      expect(result).toBe('ext');
+    });
+
+    it('should return last segment after dot when filename has multiple dots', () => {
+      const fileName = 'archive.tar.gz';
+      const result = utilsService.getFileExtension(fileName);
+      expect(result).toBe('gz');
+    });
+  });
 });

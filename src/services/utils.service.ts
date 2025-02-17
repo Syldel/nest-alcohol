@@ -72,4 +72,11 @@ export class UtilsService {
     const pourcentageArrondi = Math.round(pourcentage);
     return `${pourcentageArrondi}%`;
   }
+
+  public getFileExtension(fileName: string): string {
+    if (!fileName) return fileName;
+    const regex = new RegExp('[^.]+$');
+    const extension = fileName.match(regex);
+    return extension ? extension[0] : '';
+  }
 }
