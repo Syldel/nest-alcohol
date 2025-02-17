@@ -322,12 +322,28 @@ export class ExploreService implements OnModuleInit {
 
         /* ********************************************************************************* */
 
-        const price = $(
+        const priceToPay = $(
           '#ppd #apex_desktop #subscriptionPrice #sns-base-price .a-price.priceToPay',
         )
           .text()
           ?.trim();
-        console.log('Price:', price);
+
+        const basisPrice = $(
+          '#ppd #apex_desktop #subscriptionPrice #sns-base-price .basisPrice .a-price :first-child',
+        )
+          .text()
+          ?.trim();
+
+        const price = [
+          {
+            priceToPay: this.utilsService.extractPriceAndCurrency(priceToPay),
+            basisPrice: this.utilsService.extractPriceAndCurrency(basisPrice),
+            timestamp: Date.now(),
+          },
+        ];
+        console.log('price:', price);
+
+        /* ********************************************************************************* */
 
         // console.log(
         //   'vatMessage',

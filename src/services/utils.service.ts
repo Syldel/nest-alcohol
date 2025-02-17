@@ -79,4 +79,67 @@ export class UtilsService {
     const extension = fileName.match(regex);
     return extension ? extension[0] : '';
   }
+
+  public extractPriceAndCurrency(input: string): {
+    price: number;
+    currency: string;
+  } {
+    const cleanedInput = input.trim();
+
+    const regex = /([\d.,\s]*)([€$£¥₹₽₩₫₪฿₱A-Z]{1,4})?$/;
+
+    const match = cleanedInput.match(regex);
+
+    if (match) {
+      let rawPrice = match[1]?.trim();
+      const currency = match[2]?.trim();
+
+      // Si aucun prix ni devise valide n'est détecté
+      if (!rawPrice && !currency) {
+        return null;
+      }
+
+      // Vérification et validation de la devise
+      if (currency && !/^[€$£¥₹₽₩₫₪฿₱A-Z]{1,4}$/.test(currency)) {
+        return null;
+      }
+
+      // Gestion des cas où un prix est absent, mais une devise est présente
+      if (!rawPrice || !/[\d]/.test(rawPrice)) {
+        return { price: null, currency: currency ?? null };
+      }
+
+      // Problem, there is something strange like '12.34€ 56.78€'
+      if (!cleanedInput.startsWith(rawPrice)) {
+        return null;
+      }
+
+      rawPrice = rawPrice.replace(/\s/g, '');
+
+      // Gestion des formats de prix avec points et virgules
+      if (rawPrice.includes(',') && rawPrice.includes('.')) {
+        // Format mixte : 1,234.56 ou 1.234,56
+        if (rawPrice.indexOf(',') < rawPrice.indexOf('.')) {
+          // Format anglophone : 1,234.56 -> 1234.56
+          rawPrice = rawPrice.replace(/,/g, '');
+        } else {
+          // Format européen : 1.234,56 -> 1234.56
+          rawPrice = rawPrice.replace(/\./g, '').replace(',', '.');
+        }
+      } else if (rawPrice.includes(',')) {
+        // Format européen simple : 1234,56 -> 1234.56
+        rawPrice = rawPrice.replace(',', '.');
+      }
+
+      // Vérification que le prix est un nombre valide
+      if (/^\d*\.?\d+$/.test(rawPrice)) {
+        return { price: parseFloat(rawPrice), currency: currency ?? null };
+      } else {
+        // Si le prix n'est pas valide mais une devise est présente
+        return { price: null, currency: currency ?? null };
+      }
+    }
+
+    return null;
+  }
 }

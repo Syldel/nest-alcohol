@@ -84,7 +84,7 @@ describe('Alcohol et CreateAlcoholInput', () => {
       });
     });
 
-    fdescribe('validateCreateAlcoholInput', () => {
+    describe('validateCreateAlcoholInput', () => {
       it('should return empty array when input is valid', async () => {
         const validInput = {
           asin: 'B07BPLMSMC',
@@ -96,7 +96,7 @@ describe('Alcohol et CreateAlcoholInput', () => {
         expect(errors).toHaveLength(0);
       });
 
-      fit('should return validation errors when asin is missing', async () => {
+      it('should return validation errors when asin is missing', async () => {
         const input = {
           asin: undefined,
           name: 'Test Alcohol',

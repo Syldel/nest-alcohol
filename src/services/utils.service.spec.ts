@@ -137,4 +137,94 @@ describe('UtilsService', () => {
       expect(result).toBe('gz');
     });
   });
+
+  describe('extractPriceAndCurrency', () => {
+    const extractPrice = (price: string) =>
+      utilsService.extractPriceAndCurrency(price);
+
+    it('should extract the numeric value and currency correctly', () => {
+      expect(extractPrice('33.22€')).toEqual({ price: 33.22, currency: '€' });
+      expect(extractPrice('11.11 USD')).toEqual({
+        price: 11.11,
+        currency: 'USD',
+      });
+      expect(extractPrice('11,22 EUR')).toEqual({
+        price: 11.22,
+        currency: 'EUR',
+      });
+      expect(extractPrice('55CHF')).toEqual({ price: 55, currency: 'CHF' });
+      expect(extractPrice('12.34 XYZ')).toEqual({
+        price: 12.34,
+        currency: 'XYZ',
+      });
+      expect(extractPrice('99 999,99 $CAN')).toEqual({
+        price: 99999.99,
+        currency: '$CAN',
+      });
+    });
+
+    it('should handle spaces around the currency and number', () => {
+      expect(extractPrice('  33.22€  ')).toEqual({
+        price: 33.22,
+        currency: '€',
+      });
+      expect(extractPrice('11.11 USD ')).toEqual({
+        price: 11.11,
+        currency: 'USD',
+      });
+      expect(extractPrice(' 11,22 EUR')).toEqual({
+        price: 11.22,
+        currency: 'EUR',
+      });
+    });
+
+    it('should return null for value and currency if no number is found', () => {
+      expect(extractPrice('abc')).toBeNull();
+      expect(extractPrice('   ')).toBeNull();
+    });
+
+    it('should return the currency even if the numeric value is invalid', () => {
+      expect(extractPrice('invalid€')).toEqual({ price: null, currency: '€' });
+      expect(extractPrice('12,34,56 USD')).toEqual({
+        price: null,
+        currency: 'USD',
+      });
+      expect(extractPrice('12.34.56 USD')).toEqual({
+        price: null,
+        currency: 'USD',
+      });
+    });
+
+    it('should handle prices with thousands separators', () => {
+      expect(extractPrice('1 234,56€')).toEqual({
+        price: 1234.56,
+        currency: '€',
+      });
+      expect(extractPrice('1.234,56 USD')).toEqual({
+        price: 1234.56,
+        currency: 'USD',
+      });
+    });
+
+    it('should handle prices with points and commas', () => {
+      expect(extractPrice('1.234,56€')).toEqual({
+        price: 1234.56,
+        currency: '€',
+      });
+      expect(extractPrice('1,234.56 USD')).toEqual({
+        price: 1234.56,
+        currency: 'USD',
+      });
+    });
+
+    it('should return price when there is only digits', () => {
+      expect(extractPrice('123')).toEqual({ currency: null, price: 123 });
+    });
+
+    it('should return null for invalid inputs', () => {
+      expect(extractPrice('invalid')).toBeNull();
+      expect(extractPrice('')).toBeNull();
+      expect(extractPrice('12.34€ 56.78€')).toBeNull();
+    });
+  });
 });
