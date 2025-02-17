@@ -215,44 +215,11 @@ export class ExploreService implements OnModuleInit {
         this.extractLinkFromTable.bind(this),
       );
 
-      let shortlink: string;
-      console.log('#nav-link-accountList', $(`#nav-link-accountList`).text());
-      if ($(`#nav-link-accountList`).text().includes('Identifiez-vous')) {
-        this.utilsService.coloredLog(ELogColor.FgRed, 'Not logged!');
+      const shortlink = await this.getShortlink($);
+      if (!shortlink) {
+        this.utilsService.coloredLog(ELogColor.FgRed, 'Shorlink is undefined!');
         this.stopExploration(true);
         return;
-      } else {
-        const buttonId = 'amzn-ss-get-link-button';
-        const dropdownId = 'amzn-ss-tracking-id-dropdown-text';
-        const selectTargetKey = `alcoholwhiskies-21`;
-        const getLinkButtonId = 'amzn-ss-get-link-btn-text-announce';
-        const shortlinkTextarea = 'amzn-ss-text-shortlink-textarea';
-
-        await this.page.click(`#${buttonId}`);
-        await this.utilsService.waitSeconds(2000);
-        await this.page.select(`#${dropdownId}`, selectTargetKey);
-        await this.utilsService.waitSeconds(2000);
-
-        const trackingSelectValue = $(`#${dropdownId}`).val();
-        console.log('trackingSelectValue:', trackingSelectValue);
-
-        if (trackingSelectValue !== selectTargetKey) {
-          this.utilsService.coloredLog(
-            ELogColor.FgRed,
-            `Problem => trackingSelectValue is ${trackingSelectValue}`,
-          );
-          this.stopExploration(true);
-          return;
-        }
-
-        await this.page.click(`#${getLinkButtonId}`);
-        await this.utilsService.waitSeconds(2000);
-
-        shortlink = await this.page.evaluate((sel) => {
-          const textarea = document.querySelector(sel) as HTMLTextAreaElement;
-          return textarea ? textarea.value : null;
-        }, `#${shortlinkTextarea}`);
-        console.log('shortlink:', shortlink, '\n');
       }
 
       const dpClass = $('#dp').attr('class');
@@ -695,5 +662,48 @@ export class ExploreService implements OnModuleInit {
       return match[1];
     }
     return null;
+  }
+
+  private async getShortlink($: cheerio.CheerioAPI): Promise<string> {
+    let shortlink: string;
+    console.log('#nav-link-accountList', $(`#nav-link-accountList`).text());
+    if ($(`#nav-link-accountList`).text().includes('Identifiez-vous')) {
+      this.utilsService.coloredLog(ELogColor.FgRed, 'Not logged!');
+      this.stopExploration(true);
+      return;
+    } else {
+      const buttonId = 'amzn-ss-get-link-button';
+      const dropdownId = 'amzn-ss-tracking-id-dropdown-text';
+      const selectTargetKey = `alcoholwhiskies-21`;
+      const getLinkButtonId = 'amzn-ss-get-link-btn-text-announce';
+      const shortlinkTextarea = 'amzn-ss-text-shortlink-textarea';
+
+      await this.page.click(`#${buttonId}`);
+      await this.utilsService.waitSeconds(2000);
+      await this.page.select(`#${dropdownId}`, selectTargetKey);
+      await this.utilsService.waitSeconds(2000);
+
+      const trackingSelectValue = $(`#${dropdownId}`).val();
+      console.log('trackingSelectValue:', trackingSelectValue);
+
+      if (trackingSelectValue !== selectTargetKey) {
+        this.utilsService.coloredLog(
+          ELogColor.FgRed,
+          `Problem => trackingSelectValue is ${trackingSelectValue}`,
+        );
+        this.stopExploration(true);
+        return;
+      }
+
+      await this.page.click(`#${getLinkButtonId}`);
+      await this.utilsService.waitSeconds(2000);
+
+      shortlink = await this.page.evaluate((sel) => {
+        const textarea = document.querySelector(sel) as HTMLTextAreaElement;
+        return textarea ? textarea.value : null;
+      }, `#${shortlinkTextarea}`);
+      console.log('shortlink:', shortlink, '\n');
+    }
+    return shortlink;
   }
 }
