@@ -172,9 +172,48 @@ describe('ExploreService', () => {
       ).toBe('anotherId');
     });
 
+    it('should extract the ID from URLs - type 2', () => {
+      expect(
+        extractImageId(
+          `${urlStart}ec63bb3c-f08b-4c30-84a0-65c704bedfee.__CR0,0,300,600_PT0_SX150_V1___.png`,
+        ),
+      ).toBe('ec63bb3c-f08b-4c30-84a0-65c704bedfee');
+
+      expect(
+        extractImageId(`${urlStart}ec63bb3c-f08b-4c30-84a0-65c704bedfee.png`),
+      ).toBe('ec63bb3c-f08b-4c30-84a0-65c704bedfee');
+    });
+
     it('should return null for invalid URLs', () => {
       expect(extractImageId(`${urlStart}invalidURL`)).toBeNull();
       expect(extractImageId('URL_sans_format')).toBeNull();
+    });
+  });
+
+  describe('extractImageParamsFromUrl', () => {
+    const urlStart = 'https://m.media-mywebsite.com/images/I/';
+    const extractImageParams = (url: string) =>
+      exploreService['extractImageParamsFromUrl'](url);
+
+    it('should extract the image params from URLs', () => {
+      expect(
+        extractImageParams(
+          `${urlStart}ec63bb3c-f08b-4c30-84a0-65c704bedfee.__CR0,0,300,600_PT0_SX150_V1___.png`,
+        ),
+      ).toBe('__CR0,0,300,600_PT0_SX150_V1___');
+
+      expect(
+        extractImageParams(
+          `${urlStart}919-LiF+7PL._AC_QL95_SX300_SY250_FMwebp_.jpg`,
+        ),
+      ).toBe('_AC_QL95_SX300_SY250_FMwebp_');
+
+      expect(extractImageParams(`${urlStart}test.jpg`)).toBeNull();
+    });
+
+    it('should return null for invalid URLs', () => {
+      expect(extractImageParams(`${urlStart}invalidURL`)).toBeNull();
+      expect(extractImageParams('URL_sans_format')).toBeNull();
     });
   });
 });

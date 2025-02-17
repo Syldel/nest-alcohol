@@ -449,7 +449,7 @@ export class ExploreService implements OnModuleInit {
 
         /* ******************************* */
 
-        const imagesDescription: string[] = [];
+        let imagesDescription: string[] = [];
         let imgDescSrc: string;
         $('#dp #aplus .desktop .aplus-module')
           .not('.aplus-brand-story-hero')
@@ -457,7 +457,41 @@ export class ExploreService implements OnModuleInit {
             imgDescSrc = $(element).find('img').attr('data-src');
             if (imgDescSrc) imagesDescription.push(imgDescSrc);
           });
+
+        imagesDescription = imagesDescription.map((url) => {
+          try {
+            const id = this.extractImageIdFromUrl(url);
+            const params = this.extractImageParamsFromUrl(url);
+
+            if (!id) {
+              console.error(`URL invalide: ${url}`);
+              return null;
+            }
+
+            if (id && !params) {
+              return `${this.extractImageIdFromUrl(url)}`;
+            }
+
+            return `${this.extractImageIdFromUrl(url)}.${this.extractImageParamsFromUrl(url)}`;
+          } catch (error) {
+            console.error(`Erreur lors du traitement de l'URL ${url}:`, error);
+            return null;
+          }
+        });
         console.log('imagesDescription:', imagesDescription);
+
+        if (
+          imagesDescription.some(
+            (id) => id === null || id === undefined || id === '',
+          )
+        ) {
+          this.utilsService.coloredLog(
+            ELogColor.FgRed,
+            `At least one element in imagesDescription is null, undefined or empty!`,
+          );
+          this.stopExploration(true);
+          return;
+        }
 
         return {
           asin: this.extractASIN(canonicalLink),
@@ -657,6 +691,16 @@ export class ExploreService implements OnModuleInit {
   private extractImageIdFromUrl(url: string): string {
     const match = url.match(
       /([a-zA-Z0-9-_+]+)\.[a-zA-Z0-9_,]*\.?[a-zA-Z]{3,4}$/,
+    );
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
+  }
+
+  private extractImageParamsFromUrl(url: string): string {
+    const match = url.match(
+      /[a-zA-Z0-9-_+]+\.([a-zA-Z0-9_,]*)\.?[a-zA-Z]{3,4}$/,
     );
     if (match && match[1]) {
       return match[1];
