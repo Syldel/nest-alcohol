@@ -11,9 +11,11 @@ import { AlcoholService } from '../alcohol/alcohol.service';
 
 type Link = {
   asin?: string;
-  url: string;
-  explored: number;
+  url?: string;
+  explored?: number;
   thumbSrc?: string;
+  title?: string;
+  addToExploration?: boolean;
 };
 
 @Injectable()
@@ -34,9 +36,9 @@ export class ExploreService implements OnModuleInit {
   public stopExploration(state: boolean): void {
     this._stopExploration = state;
     if (state) {
-      this.utilsService.coloredLog(ELogColor.FgRed, `STOP EXPLORATION!`);
+      this.coloredLog(ELogColor.FgRed, `STOP EXPLORATION!`);
     } else {
-      this.utilsService.coloredLog(ELogColor.FgYellow, `START EXPLORATION!`);
+      this.coloredLog(ELogColor.FgYellow, `START EXPLORATION!`);
     }
   }
 
@@ -53,6 +55,17 @@ export class ExploreService implements OnModuleInit {
 
   onModuleInit() {
     this.start();
+  }
+
+  private coloredLog = (color: ELogColor, text: string) =>
+    this.utilsService.coloredLog(color, text);
+
+  private addExplorationLink(link: Link) {
+    if (link && link.addToExploration) {
+      this.coloredLog(ELogColor.FgGreen, `Lien ${link.url} ajouté!\n`);
+      const { asin, url, explored } = link;
+      this.links.push({ asin, url, explored });
+    }
   }
 
   public async start() {
@@ -104,7 +117,7 @@ export class ExploreService implements OnModuleInit {
           await this.alcoholService.create(productData);
         } catch (error) {
           if (error instanceof ConflictException) {
-            this.utilsService.coloredLog(
+            this.coloredLog(
               ELogColor.FgYellow,
               `Échec de la création du alcohol : ${error.message}`,
             );
@@ -115,7 +128,7 @@ export class ExploreService implements OnModuleInit {
       }
 
       if (this._stopExploration) {
-        this.utilsService.coloredLog(ELogColor.FgRed, `> break while`);
+        this.coloredLog(ELogColor.FgRed, `> break while`);
         break;
       }
 
@@ -138,7 +151,7 @@ export class ExploreService implements OnModuleInit {
       );
       console.log('notTranslatedKeys', this.notTranslatedKeys);
 
-      this.utilsService.coloredLog(ELogColor.FgCyan, `Wait 10s...`);
+      this.coloredLog(ELogColor.FgCyan, `Wait 10s...`);
       await this.utilsService.waitSeconds(10000);
 
       break;
@@ -193,31 +206,47 @@ export class ExploreService implements OnModuleInit {
     this.cheerioAPI = $;
 
     const canonicalLink = $('link[rel="canonical"]').attr('href');
-    this.utilsService.coloredLog(
-      ELogColor.FgCyan,
-      `link canonical: ${canonicalLink}`,
-    );
+    this.coloredLog(ELogColor.FgCyan, `link canonical: ${canonicalLink}`);
 
+    let link: Link;
     if ($('.octopus-page-style').length > 0) {
-      $('.octopus-page-style .octopus-pc-item').each(
-        this.extractLink.bind(this),
-      );
+      $('.octopus-page-style .octopus-pc-item').each((index, element) => {
+        link = this.extractLink(index, element);
+        this.addExplorationLink(link);
+      });
     }
 
     if ($('#search').length > 0) {
-      $('#search [role="listitem"]').each(this.extractLink.bind(this));
+      $('#search [role="listitem"]').each((index, element) => {
+        link = this.extractLink(index, element);
+        this.addExplorationLink(link);
+      });
     }
 
     if ($('#dp').length > 0) {
-      $('#dp .a-carousel-card').each(this.extractLink.bind(this));
+      $('#dp .a-carousel-card').each((index, element) => {
+        link = this.extractLink(index, element);
+        this.addExplorationLink(link);
+      });
 
-      $('#dp .apm-tablemodule-table th').each(
-        this.extractLinkFromTable.bind(this),
-      );
+      const relatedLinks: Link[] = [];
+      $('#dp .apm-tablemodule-table th').each((index, element) => {
+        link = this.extractLinkFromTable(index, element);
+        this.addExplorationLink(link);
+        if (link && link.asin && link.thumbSrc && link.title) {
+          const { asin, thumbSrc, title } = link;
+          relatedLinks.push({
+            asin,
+            thumbSrc: this.processImageUrl(thumbSrc),
+            title,
+          });
+        }
+      });
+      console.log('relatedLinks:', relatedLinks);
 
       const shortlink = await this.getShortlink($);
       if (!shortlink) {
-        this.utilsService.coloredLog(ELogColor.FgRed, 'Shorlink is undefined!');
+        this.coloredLog(ELogColor.FgRed, 'Shorlink is undefined!');
         this.stopExploration(true);
         return;
       }
@@ -312,7 +341,7 @@ export class ExploreService implements OnModuleInit {
         console.log('thumbnails:', thumbnails);
 
         if (images.length !== thumbnails.length) {
-          this.utilsService.coloredLog(
+          this.coloredLog(
             ELogColor.FgRed,
             `images and thumbnails have not the same length => ${images.length} !== ${thumbnails.length}`,
           );
@@ -324,7 +353,7 @@ export class ExploreService implements OnModuleInit {
           images.some((id) => id === null || id === undefined || id === '') ||
           thumbnails.some((id) => id === null || id === undefined || id === '')
         ) {
-          this.utilsService.coloredLog(
+          this.coloredLog(
             ELogColor.FgRed,
             `At least one id in images or thumbnails is null, undefined or empty!`,
           );
@@ -392,10 +421,7 @@ export class ExploreService implements OnModuleInit {
           } else {
             // Gérer les clés non traduites (facultatif)
             infos[key] = tableData[key]; // Conserver la clé originale
-            this.utilsService.coloredLog(
-              ELogColor.FgMagenta,
-              `Clé non traduite : ${key}`,
-            );
+            this.coloredLog(ELogColor.FgMagenta, `Clé non traduite : ${key}`);
             if (!this.notTranslatedKeys.find((val) => val === key)) {
               this.notTranslatedKeys.push(key);
             } else {
@@ -458,26 +484,9 @@ export class ExploreService implements OnModuleInit {
             if (imgDescSrc) imagesDescription.push(imgDescSrc);
           });
 
-        imagesDescription = imagesDescription.map((url) => {
-          try {
-            const id = this.extractImageIdFromUrl(url);
-            const params = this.extractImageParamsFromUrl(url);
-
-            if (!id) {
-              console.error(`URL invalide: ${url}`);
-              return null;
-            }
-
-            if (id && !params) {
-              return `${this.extractImageIdFromUrl(url)}`;
-            }
-
-            return `${this.extractImageIdFromUrl(url)}.${this.extractImageParamsFromUrl(url)}`;
-          } catch (error) {
-            console.error(`Erreur lors du traitement de l'URL ${url}:`, error);
-            return null;
-          }
-        });
+        imagesDescription = imagesDescription.map((url) =>
+          this.processImageUrl(url),
+        );
         console.log('imagesDescription:', imagesDescription);
 
         if (
@@ -485,7 +494,7 @@ export class ExploreService implements OnModuleInit {
             (id) => id === null || id === undefined || id === '',
           )
         ) {
-          this.utilsService.coloredLog(
+          this.coloredLog(
             ELogColor.FgRed,
             `At least one element in imagesDescription is null, undefined or empty!`,
           );
@@ -515,11 +524,33 @@ export class ExploreService implements OnModuleInit {
             product: productDescription,
             images: imagesDescription,
           },
+          relatedLinks,
           shortlink,
           type: this.targetKeyword,
           langCountryCode: this.langCountryCode,
         };
       }
+    }
+  }
+
+  private processImageUrl(url: string): string {
+    try {
+      const id = this.extractImageIdFromUrl(url);
+      const params = this.extractImageParamsFromUrl(url);
+
+      if (!id) {
+        console.error(`URL invalide: ${url}`);
+        return null;
+      }
+
+      if (id && !params) {
+        return `${id}`;
+      }
+
+      return `${id}.${params}`;
+    } catch (error) {
+      console.error(`Erreur lors du traitement de l'URL ${url}:`, error);
+      return null;
     }
   }
 
@@ -543,54 +574,59 @@ export class ExploreService implements OnModuleInit {
     }
   }
 
-  private manageLinkAdding(href: string, thumbSrc?: string) {
-    if (!thumbSrc) thumbSrc = '';
+  private manageLinkAdding(
+    href: string,
+    thumbSrc?: string,
+    title?: string,
+  ): Link {
+    let addToExploration = true;
     if (href?.length > 0) {
       if (this.links.find((obj) => obj.url === href)) {
-        console.log(href, 'already in links');
-      } else {
-        const productId = this.extractASIN(href);
-        console.log('asin:', productId);
-        if (!productId && href.startsWith('/vdp/')) {
-          this.utilsService.coloredLog(
-            ELogColor.FgRed,
-            'vdp => Lien non ajouté!\n',
-          );
-          return;
-        }
-        if (productId && this.links.find((obj) => obj.asin === productId)) {
-          this.utilsService.coloredLog(
-            ELogColor.FgRed,
-            'ASIN already in links => Lien non ajouté!\n',
-          );
-          return;
-        }
-        this.utilsService.coloredLog(ELogColor.FgGreen, 'Lien ajouté!\n');
-        this.links.push({
-          asin: productId,
-          url: href,
-          explored: null,
-          // thumbSrc,
-        });
+        this.coloredLog(ELogColor.FgRed, 'url already in links\n');
+        addToExploration = false;
       }
+      const productId = this.extractASIN(href);
+      console.log('asin:', productId);
+      if (!productId && href.startsWith('/vdp/')) {
+        this.coloredLog(ELogColor.FgRed, 'vdp => Lien non ajouté!\n');
+        addToExploration = false;
+        return;
+      }
+      if (productId && this.links.find((obj) => obj.asin === productId)) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          'ASIN already in links => Lien non ajouté!\n',
+        );
+        addToExploration = false;
+      }
+      if (productId) {
+        href = `/dp/${productId}`;
+      }
+
+      return {
+        asin: productId,
+        url: href,
+        explored: null,
+        title,
+        thumbSrc,
+        addToExploration,
+      };
     }
   }
 
-  private extractLinkFromTable(i: number, element: any): boolean | void {
+  private extractLinkFromTable(i: number, element: any): Link {
     const $element = this.cheerioAPI(element);
-    // const titre = $element.find('a').text().trim();
+    const title = $element.find('a').text().trim();
     const href = $element.find('a').attr('href');
-
     const thumbSrc = $element.find('img').attr('src');
-    // console.log('extractLinkFromTable titre:', titre);
+    console.log('extractLinkFromTable title:', title);
     console.log('extractLinkFromTable href:', href);
     console.log('extractLinkFromTable thumbSrc:', thumbSrc);
-    console.log('');
 
-    this.manageLinkAdding(href, thumbSrc);
+    return this.manageLinkAdding(href, thumbSrc, title);
   }
 
-  private extractLink(i: number, element: any): boolean | void {
+  private extractLink(i: number, element: any): Link {
     const $element = this.cheerioAPI(element);
     // const titre = $element.find('.a-link-normal [data-rows]').text().trim();
     let href = $element.find('.a-link-normal').attr('href');
@@ -623,9 +659,8 @@ export class ExploreService implements OnModuleInit {
     // console.log('extractLink titre:', titre);
     console.log('extractLink href:', href);
     console.log('extractLink thumbSrc:', thumbSrc);
-    console.log('');
 
-    this.manageLinkAdding(href, thumbSrc);
+    return this.manageLinkAdding(href, thumbSrc);
   }
 
   private async getViewerImages($: cheerio.CheerioAPI) {
@@ -712,7 +747,7 @@ export class ExploreService implements OnModuleInit {
     let shortlink: string;
     console.log('#nav-link-accountList', $(`#nav-link-accountList`).text());
     if ($(`#nav-link-accountList`).text().includes('Identifiez-vous')) {
-      this.utilsService.coloredLog(ELogColor.FgRed, 'Not logged!');
+      this.coloredLog(ELogColor.FgRed, 'Not logged!');
       this.stopExploration(true);
       return;
     } else {
@@ -731,7 +766,7 @@ export class ExploreService implements OnModuleInit {
       console.log('trackingSelectValue:', trackingSelectValue);
 
       if (trackingSelectValue !== selectTargetKey) {
-        this.utilsService.coloredLog(
+        this.coloredLog(
           ELogColor.FgRed,
           `Problem => trackingSelectValue is ${trackingSelectValue}`,
         );
