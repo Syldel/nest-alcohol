@@ -227,4 +227,102 @@ describe('UtilsService', () => {
       expect(extractPrice('12.34€ 56.78€')).toBeNull();
     });
   });
+
+  describe('cleanHtml', () => {
+    it('should remove script tags and their content when HTML contains script tags', () => {
+      const html = '<div>Hello World</div><script>alert("test");</script>';
+      const expected = '<div>Hello World</div>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should return empty string when input is empty', () => {
+      const html = '';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe('');
+    });
+
+    it('should replace multiple consecutive whitespaces with a single space when HTML contains extra spaces', () => {
+      const html = '<div>Hello     World</div>';
+      const expected = '<div>Hello World</div>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove HTML comments when HTML contains comments', () => {
+      const html = '<!-- This is a comment --><div>Hello World</div>';
+      const expected = '<div>Hello World</div>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove script tags, comments, and extra spaces when HTML contains multiple script tags and comments', () => {
+      const html =
+        '<script>alert("test1");</script><div>Hello World<!-- comment --><script>alert("test2");</script></div>';
+      const expected = '<div>Hello World</div>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove script tags, comments, and extra spaces when HTML contains multiple script tags and comments', () => {
+      const html = `<!-- show up to 2 reviews by default --> 
+
+        <h3><span>Description du produit</span></h3>      
+
+        <p>Description</p>
+
+
+        <script>
+          console.log('Ceci est un script');
+        </script>
+
+        <p>Texte après le script.</p>`;
+      const expected =
+        '<h3><span>Description du produit</span></h3> <p>Description</p> <p>Texte après le script.</p>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove script tags, comments, and extra spaces when HTML contains multiple script tags and comments', () => {
+      const html = `<!-- show up to 2 reviews by default --> 
+               <h3> <span>Description du produit</span> </h3>        <p><span>Description du produit<br>Bulleit 10 ans, issu de réserves sélectionnées par Tom Bulleit, arrière petit-fils du fondateur de la distillerie, est une nouvelle expression du Bulleit Bourbon.</p></span><script>
+                  P.when('A').execute(function(A) {
+                      A.on('a:expander:toggle_description:toggle:collapse', function(data) {
+                        window.scroll(0, data.expander.$expander[0].offsetTop-100);
+                      });
+                    });
+                </script>
+                <div class="a-expander-content">Voir plus</div>`;
+      const expected =
+        '<h3> <span>Description du produit</span> </h3> <p><span>Description du produit<br>Bulleit 10 ans, issu de réserves sélectionnées par Tom Bulleit, arrière petit-fils du fondateur de la distillerie, est une nouvelle expression du Bulleit Bourbon.</p></span> <div class=\"a-expander-content\">Voir plus</div>';
+      const result = utilsService.cleanHtml(html);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove data-*', () => {
+      const htmlInput = `<div data-csa-c-func-deps="aui-da-a-expander-toggle" data-csa-c-type="widget" data-csa-interaction-events="click" aria-expanded="false" role="button" href="javascript:void(0)" data-action="a-expander-toggle" class="a-expander-header a-declarative a-expander-extend-header" data-csa-c-id="16tcau-kqx4td-64fhow-kx7t4f">
+  <i class="a-icon a-icon-extender-expand"></i><span class="a-expander-prompt">Voir plus</span></div>`;
+      const expected =
+        '<div aria-expanded=\"false\" role=\"button\" href=\"javascript:void(0)\" class=\"a-expander-header a-declarative a-expander-extend-header\"> <i class=\"a-icon a-icon-extender-expand\"></i><span class=\"a-expander-prompt\">Voir plus</span></div>';
+      const result = utilsService.cleanHtml(htmlInput);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove links', () => {
+      const htmlInput = `<h3> <span>Description du produit</span> </h3><a data-csa-c-func-deps="aui-da-a-expander-toggle" data-csa-c-type="widget" data-csa-interaction-events="click" aria-expanded="false" role="button" href="javascript:void(0)" data-action="a-expander-toggle" class="a-expander-header a-declarative a-expander-extend-header" data-csa-c-id="16tcau-kqx4td-64fhow-kx7t4f">
+  <i class="a-icon a-icon-extender-expand"></i><span class="a-expander-prompt">Voir plus</span></a><p>Après le lien</p>`;
+      const expected =
+        '<h3> <span>Description du produit</span> </h3><p>Après le lien</p>';
+      const result = utilsService.cleanHtml(htmlInput);
+      expect(result).toBe(expected);
+    });
+
+    it('should remove display none', () => {
+      const htmlInput = `<h3> <span>Description du produit</span> </h3><div data-expanded="false" class="a-expander-content a-expander-extend-content" style="display:none">    <h3> <span>Avertissement De Sûreté</span> </h3>        <p> <span>Interdiction de vente de boissons alcooliques aux mineurs de moins de 18 ans</span>  </p>        </div> <p>Après display none</p>`;
+      const expected =
+        '<h3> <span>Description du produit</span> </h3> <p>Après display none</p>';
+      const result = utilsService.cleanHtml(htmlInput);
+      expect(result).toBe(expected);
+    });
+  });
 });

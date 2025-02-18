@@ -135,7 +135,7 @@ export class ExploreService implements OnModuleInit {
           }
         }
         if (savedAlcohol) {
-          this.coloredLog(ELogColor.FgGreen, `Database saved successful!`);
+          this.coloredLog(ELogColor.FgGreen, `Successfully added to database!`);
           //console.log('savedAlcohol:', savedAlcohol);
         }
       }
@@ -513,7 +513,8 @@ export class ExploreService implements OnModuleInit {
 
         /* ******************************* */
 
-        const productDescription = $('#dp #productDescription').html()?.trim();
+        let productDescription = $('#dp #productDescription').html()?.trim();
+        productDescription = this.utilsService.cleanHtml(productDescription);
         console.log('productDescription:', productDescription);
 
         /* ******************************* */

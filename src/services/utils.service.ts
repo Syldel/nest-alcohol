@@ -142,4 +142,38 @@ export class UtilsService {
 
     return null;
   }
+
+  /**
+   * Nettoie une chaîne HTML en supprimant :
+   * - Les balises <script> et leur contenu,
+   * - Les commentaires HTML,
+   * - Les balises <a> et leur contenu,
+   * - Les balises <div> (et similaires) contenant `style="display:none"` avec tout leur contenu,
+   * - Les espaces en trop.
+   * @param htmlString - La chaîne HTML à nettoyer.
+   * @returns La chaîne HTML nettoyée.
+   */
+  public cleanHtml(htmlString: string): string {
+    // Supprime les balises <script> et leur contenu
+    let cleanedHtml = htmlString.replace(/<script.*?>.*?<\/script>/gs, '');
+    // Supprime les commentaires HTML
+    cleanedHtml = cleanedHtml.replace(/<!--.*?-->/gs, '');
+
+    // Supprime les balises <a> avec leurs attributs et contenu
+    cleanedHtml = cleanedHtml.replace(/<a.*?>.*?<\/a>/gs, '');
+
+    // Supprime les éléments contenant style="display:none"
+    cleanedHtml = cleanedHtml.replace(
+      /<div[^>]*style=["']?display\s*:\s*none.*?>.*?<\/div>/gis,
+      '',
+    );
+
+    // Supprime les attributs data-*
+    cleanedHtml = cleanedHtml.replace(/\s*data-[^=]+="[^"]*"/g, '');
+
+    // Supprime les espaces en trop (incluant les lignes vides)
+    cleanedHtml = cleanedHtml.replace(/\s+/g, ' '); // Remplace plusieurs espaces consécutifs par un seul espace
+    cleanedHtml = cleanedHtml.trim();
+    return cleanedHtml;
+  }
 }
