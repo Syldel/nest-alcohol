@@ -80,27 +80,30 @@ export class ExploreService implements OnModuleInit {
     }
 
     // Save links data in a json file
-    const jsonFileName = `jsons/${this.targetKeyword}-exploration.json`;
-    const explorationData = await this.jsonService.readJsonFile(jsonFileName);
+    const jsonExplorationPath = `jsons/${this.targetKeyword}-exploration.json`;
+    const explorationData =
+      await this.jsonService.readJsonFile(jsonExplorationPath);
 
     if (!explorationData) {
-      await this.jsonService.writeJsonFile(jsonFileName, {
-        data: { test: 'value' },
-      });
-    }
-    // TODO: Save links data in jsons
+      this.links = [
+        {
+          asin: 'B07BPLMSMC',
+          url: '/dp/B07BPLMSMC',
+          explored: null,
+        },
+        // {
+        //   url: `/s?k=${this.targetKeyword}`,
+        //   explored: null,
+        // },
+      ];
 
-    this.links = [
-      {
-        asin: 'B07BPLMSMC',
-        url: '/dp/B07BPLMSMC',
-        explored: null,
-      },
-      // {
-      //   url: `/s?k=${this.targetKeyword}`,
-      //   explored: null,
-      // },
-    ];
+      await this.jsonService.writeJsonFile(jsonExplorationPath, {
+        data: this.links,
+      });
+    } else {
+      this.links = explorationData.data;
+    }
+
     await this.initPuppeteer();
 
     let nextLink: Link;
@@ -163,6 +166,10 @@ export class ExploreService implements OnModuleInit {
         explorationPercent,
       );
       console.log('notTranslatedKeys', this.notTranslatedKeys);
+
+      await this.jsonService.writeJsonFile(jsonExplorationPath, {
+        data: this.links,
+      });
 
       this.coloredLog(ELogColor.FgCyan, `Wait 10s...`);
       await this.utilsService.waitSeconds(10000);
