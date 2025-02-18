@@ -8,6 +8,10 @@ import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 
 import { AlcoholService } from '../alcohol/alcohol.service';
+import { PriceItem } from '../alcohol/entities/price.entity';
+import { FamilyLink } from '../alcohol/entities/family-link.entity';
+import { CreateAlcoholInput } from '../alcohol/entities/create-alcohol-input.entity';
+import { Alcohol } from '../alcohol/entities/alcohol.entity';
 
 type Link = {
   asin?: string;
@@ -100,9 +104,10 @@ export class ExploreService implements OnModuleInit {
     await this.initPuppeteer();
 
     let nextLink: Link;
-    let productData: any;
+    let productData: CreateAlcoholInput;
     let exploredLinks: number;
     let explorationPercent: string;
+    let savedAlcohol: Alcohol;
     while (
       this.links.find((link) => link.explored === null) &&
       !this._stopExploration
@@ -114,16 +119,24 @@ export class ExploreService implements OnModuleInit {
       );
       if (productData) {
         try {
-          await this.alcoholService.create(productData);
+          savedAlcohol = await this.alcoholService.create(productData);
         } catch (error) {
           if (error instanceof ConflictException) {
             this.coloredLog(
               ELogColor.FgYellow,
-              `Échec de la création du alcohol : ${error.message}`,
+              `Échec de la création du Alcohol : ${error.message}`,
             );
           } else {
+            this.coloredLog(
+              ELogColor.FgRed,
+              `Échec de la création du Alcohol : ${error.message}`,
+            );
             this.stopExploration(true);
           }
+        }
+        if (savedAlcohol) {
+          this.coloredLog(ELogColor.FgGreen, `Database saved successful!`);
+          //console.log('savedAlcohol:', savedAlcohol);
         }
       }
 
@@ -229,20 +242,20 @@ export class ExploreService implements OnModuleInit {
         this.addExplorationLink(link);
       });
 
-      const relatedLinks: Link[] = [];
+      const familyLinks: FamilyLink[] = [];
       $('#dp .apm-tablemodule-table th').each((index, element) => {
         link = this.extractLinkFromTable(index, element);
         this.addExplorationLink(link);
         if (link && link.asin && link.thumbSrc && link.title) {
           const { asin, thumbSrc, title } = link;
-          relatedLinks.push({
+          familyLinks.push({
             asin,
             thumbSrc: this.processImageUrl(thumbSrc),
             title,
           });
         }
       });
-      console.log('relatedLinks:', relatedLinks);
+      console.log('familyLinks:', familyLinks);
 
       const shortlink = await this.getShortlink($);
       if (!shortlink) {
@@ -254,32 +267,40 @@ export class ExploreService implements OnModuleInit {
       const dpClass = $('#dp').attr('class');
       console.log('#dp class', dpClass);
       if (dpClass?.length > 0 && !dpClass.includes('alcoholic_beverage')) {
-        console.log('alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!');
+        this.coloredLog(
+          ELogColor.FgRed,
+          'alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!',
+        );
         return;
       }
       if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
-        console.log(
+        this.coloredLog(
+          ELogColor.FgRed,
           `${this.langCountryCode} IS NOT IN THE dpClass > RETURN!!!`,
         );
         return;
       }
 
       if ($('#ppd').length > 0) {
-        const breadcrumbs = $('#wayfinding-breadcrumbs_container')
+        const breadStr = $('#wayfinding-breadcrumbs_container')
           .text()
           ?.replace(/\s+|\n/g, ' ')
-          .toLowerCase();
-        console.log('wayfinding-breadcrumbs:', breadcrumbs);
+          .toLowerCase()
+          .trim();
+        //console.log('wayfinding-breadcrumbs:', breadStr);
 
         if (
-          breadcrumbs?.length > 0 &&
-          !breadcrumbs.includes(`${this.targetKeyword}s`)
+          breadStr?.length > 0 &&
+          !breadStr.includes(`${this.targetKeyword}s`)
         ) {
-          console.log(
+          this.coloredLog(
+            ELogColor.FgRed,
             `${this.targetKeyword}s IS NOT IN THE breadcrumbs > RETURN!!!`,
           );
           return;
         }
+        const breadcrumbs = breadStr.split(' › ');
+        console.log('breadcrumbs:', breadStr);
 
         const metas = {
           title: $('meta[name="title"]').attr('content'),
@@ -317,31 +338,37 @@ export class ExploreService implements OnModuleInit {
           .text()
           ?.trim();
 
-        const averageCustomerReviews = `${avgCustomerReviews} (${customerReviewText})`;
-        console.log('averageCustomerReviews:', averageCustomerReviews);
+        const reviews = `${avgCustomerReviews} (${customerReviewText})`;
+        console.log('reviews:', reviews);
 
         /* ********************************************************************************* */
 
-        const priceToPay = $(
+        const priceToPayStr = $(
           '#ppd #apex_desktop #subscriptionPrice #sns-base-price .a-price.priceToPay',
         )
           .text()
           ?.trim();
 
-        const basisPrice = $(
+        const basisPriceStr = $(
           '#ppd #apex_desktop #subscriptionPrice #sns-base-price .basisPrice .a-price :first-child',
         )
           .text()
           ?.trim();
 
-        const price = [
-          {
-            priceToPay: this.utilsService.extractPriceAndCurrency(priceToPay),
-            basisPrice: this.utilsService.extractPriceAndCurrency(basisPrice),
+        const prices: PriceItem[] = [];
+        const priceToPay =
+          this.utilsService.extractPriceAndCurrency(priceToPayStr);
+        const basisPrice =
+          this.utilsService.extractPriceAndCurrency(basisPriceStr);
+
+        if (priceToPay || basisPrice) {
+          prices.push({
+            priceToPay,
+            basisPrice,
             timestamp: Date.now(),
-          },
-        ];
-        console.log('price:', price);
+          });
+        }
+        console.log('prices:', prices);
 
         /* ********************************************************************************* */
 
@@ -427,6 +454,7 @@ export class ExploreService implements OnModuleInit {
           'Conditions de conservation': 'storageConditions',
           Millésime: 'vintage',
           'Référence constructeur': 'manufacturerReference',
+          'Récompense(s)': 'prizes',
         };
 
         const infos = {};
@@ -449,7 +477,6 @@ export class ExploreService implements OnModuleInit {
         /* ******************************* */
         const featureBullets: string[] = [];
         $('#ppd #feature-bullets li .a-list-item').each((i, element) => {
-          // console.log('feature-bullets', $(element).text());
           featureBullets.push($(element).text()?.trim());
         });
         console.log('feature-bullets:', featureBullets);
@@ -472,7 +499,7 @@ export class ExploreService implements OnModuleInit {
             infosTech[translations[key]] = tableTechData[key];
           } else {
             infosTech[key] = tableTechData[key]; // Conserver la clé originale
-            console.warn(`Clé non traduite : ${key}`);
+            this.coloredLog(ELogColor.FgMagenta, `Clé non traduite : ${key}`);
             if (!this.notTranslatedKeys.find((val) => val === key)) {
               this.notTranslatedKeys.push(key);
             } else {
@@ -518,33 +545,37 @@ export class ExploreService implements OnModuleInit {
           return;
         }
 
-        return {
+        const finalAlcohol: CreateAlcoholInput = {
           asin: this.extractASIN(canonicalLink),
           // canonicalLink,
-          timestamp: {
+          timestamps: {
             created: Date.now(),
           },
           // metas,
           // title,
           name: productTitle,
           breadcrumbs,
-          averageCustomerReviews,
-          price,
+          reviews,
+          prices,
           images: {
             bigs: images,
             thumbnails,
           },
           infos: mergedInfos,
-          featureBullets,
+          features: featureBullets,
           description: {
             product: productDescription,
             images: imagesDescription,
           },
-          relatedLinks,
+          familyLinks,
           shortlink,
           type: this.targetKeyword,
-          langCountryCode: this.langCountryCode,
+          langCode: this.langCountryCode,
         };
+
+        //console.log('finalAlcohol', finalAlcohol);
+
+        return finalAlcohol;
       }
     }
   }
@@ -761,6 +792,7 @@ export class ExploreService implements OnModuleInit {
 
   private async getShortlink($: cheerio.CheerioAPI): Promise<string> {
     let shortlink: string;
+    this.coloredLog(ELogColor.FgMagenta, '\nGET SHORTLINK');
     console.log('#nav-link-accountList', $(`#nav-link-accountList`).text());
     if ($(`#nav-link-accountList`).text().includes('Identifiez-vous')) {
       this.coloredLog(ELogColor.FgRed, 'Not logged!');

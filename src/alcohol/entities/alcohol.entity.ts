@@ -1,15 +1,17 @@
-import { ObjectType, Field, ID } from '@nestjs/graphql';
+import { ObjectType, Field } from '@nestjs/graphql';
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
 import { IsString } from 'class-validator';
+
+import { PriceItem } from './price.entity';
+import { Description } from './description.entity';
+import { Images } from './images.entity';
+import { FamilyLink } from './family-link.entity';
+import { Timestamps } from './timestamps.entity';
 
 @ObjectType()
 @Schema()
 export class Alcohol extends Document {
-  @Field(() => ID)
-  @Prop({ type: Types.ObjectId })
-  _id: string;
-
   @Field()
   @Prop()
   @IsString()
@@ -29,6 +31,48 @@ export class Alcohol extends Document {
   @Prop()
   @IsString()
   shortlink: string;
+
+  @Field(() => [PriceItem], { nullable: true })
+  @Prop({ type: [PriceItem], required: false })
+  prices?: PriceItem[];
+
+  @Field(() => Description, { nullable: true })
+  @Prop({ type: Description, default: { product: '', images: [] } })
+  description?: Description;
+
+  @Field(() => Timestamps, { nullable: true })
+  @Prop({ type: Timestamps, default: { created: Date.now } })
+  timestamps?: Timestamps;
+
+  @Field(() => String, { nullable: true })
+  @Prop({ type: String, default: '' })
+  @IsString()
+  langCode?: string;
+
+  @Field(() => [String], { nullable: true })
+  @Prop({ type: [String], default: [] })
+  features?: string[];
+
+  @Field(() => [String], { nullable: true })
+  @Prop({ type: Map, of: String, required: false })
+  infos?: Record<string, string>;
+
+  @Field(() => Images, { nullable: true })
+  @Prop({ type: Images, required: false })
+  images?: Images;
+
+  @Field(() => [FamilyLink], { nullable: true })
+  @Prop({ type: [FamilyLink], required: false })
+  familyLinks?: FamilyLink[];
+
+  @Field(() => [String], { nullable: true })
+  @Prop({ type: [String], default: [] })
+  breadcrumbs?: string[];
+
+  @Field(() => String, { nullable: true })
+  @Prop({ type: String, default: '' })
+  @IsString()
+  reviews?: string;
 }
 
 export const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
