@@ -3,6 +3,8 @@ import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { IsString } from 'class-validator';
 
+import { backupDocument } from './alcohol.middleware';
+
 import { PriceItem } from './price.entity';
 import { Description } from './description.entity';
 import { Images } from './images.entity';
@@ -77,4 +79,8 @@ export class Alcohol {
   reviews?: string;
 }
 
-export const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
+const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
+
+AlcoholSchema.post('save', backupDocument);
+
+export { AlcoholSchema };
