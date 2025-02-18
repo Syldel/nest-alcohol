@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { Alcohol } from './entities/alcohol.entity';
+import { Alcohol, AlcoholDocument } from './entities/alcohol.entity';
 import {
   CreateAlcoholInput,
   validateCreateAlcoholInput,
@@ -17,13 +17,18 @@ import { BaseService } from '../services';
 @Injectable()
 export class AlcoholService extends BaseService {
   constructor(
-    @InjectModel(Alcohol.name) private readonly alcoholModel: Model<Alcohol>,
+    @InjectModel(Alcohol.name)
+    private readonly alcoholModel: Model<AlcoholDocument>,
   ) {
     super();
   }
 
   async findAll(): Promise<Alcohol[]> {
     return this.alcoholModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<Alcohol> {
+    return this.alcoholModel.findById(id).exec();
   }
 
   async create(input: CreateAlcoholInput): Promise<Alcohol> {

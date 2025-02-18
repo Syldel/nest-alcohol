@@ -9,9 +9,11 @@ import { Images } from './images.entity';
 import { FamilyLink } from './family-link.entity';
 import { Timestamps } from './timestamps.entity';
 
+export type AlcoholDocument = Alcohol & Document;
+
 @ObjectType()
 @Schema()
-export class Alcohol extends Document {
+export class Alcohol {
   @Field()
   @Prop()
   @IsString()
