@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import * as cheerio from 'cheerio';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { decode } from 'entities';
 
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
@@ -469,6 +470,7 @@ export class ExploreService implements OnModuleInit {
           'Code article international': 'internationalArticleCode',
           "Poids de l'article": 'itemWeight',
           'Poids du produit': 'itemWeight',
+          'Poids du colis': 'packageWeight',
           Âge: 'age',
           "Pays d'origine": 'countryOfOrigin',
           Certification: 'certification',
@@ -548,7 +550,20 @@ export class ExploreService implements OnModuleInit {
 
         let productDescription = $('#dp #productDescription').html()?.trim();
         productDescription = this.utilsService.cleanHtml(productDescription);
+        productDescription = this.optimizeHtml(productDescription);
         console.log('productDescription:', productDescription);
+
+        if (
+          $('#dp #productDescription').text()?.replace(/\s+/g, ' ')?.trim() !==
+          cheerio.load(productDescription).text()?.replace(/\s+/g, ' ')?.trim()
+        ) {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `The descriptions have different texts!`,
+          );
+          this.stopExploration(true);
+          return;
+        }
 
         /* ******************************* */
 
@@ -866,5 +881,53 @@ export class ExploreService implements OnModuleInit {
       console.log('shortlink:', shortlink, '\n');
     }
     return shortlink;
+  }
+
+  public optimizeHtml(html: string): string {
+    const $ = cheerio.load(html, { xml: true }, false);
+
+    // Supprimer les balises inutiles
+    $('script, style, iframe, noscript, base, link[rel="stylesheet"]').remove();
+
+    // Supprimer les commentaires
+    $.root()
+      .contents()
+      .filter(function () {
+        return this.type === 'comment';
+      })
+      .remove();
+
+    $.root()
+      .find('*')
+      .contents()
+      .filter(function () {
+        return this.type === 'comment';
+      })
+      .remove();
+
+    // Supprimer les balises vides (sauf exceptions)
+    $('*:empty').not('img, br, meta, link').remove();
+
+    $('span.a-text-bold').each(function () {
+      $(this).replaceWith(`<strong>${$(this).html()}</strong>`);
+    });
+
+    // Nettoyer les attributs inutiles
+    $('[style], [class], [data-tracking], [onclick], [onmouseover]').removeAttr(
+      'style class data-tracking onclick onmouseover',
+    );
+
+    // Supprimer les liens <a> sans href
+    $('a:not([href]), a[href=""]').remove();
+
+    let htmlContent = $.html().replace(/\s+/g, ' ').trim();
+
+    // Remplacer les balises mal fermées </br> par un remplacement propre
+    htmlContent = htmlContent.replace(/<\/br>/g, '');
+
+    // Décoder les entités HTML pour garder les caractères spéciaux sous leur forme réelle
+    htmlContent = decode(htmlContent);
+
+    return htmlContent;
   }
 }

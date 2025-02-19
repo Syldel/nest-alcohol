@@ -216,4 +216,106 @@ describe('ExploreService', () => {
       expect(extractImageParams('URL_sans_format')).toBeNull();
     });
   });
+
+  describe('optimizeHtml', () => {
+    const optimizeHtml = (input: string) => exploreService.optimizeHtml(input);
+
+    it('should remove <script> tags from the content', () => {
+      const inputHtml = `
+            <h1>Hello</h1>
+            <script>console.log('test');</script>
+        `;
+      const expectedHtml = `
+            <h1>Hello</h1>
+        `;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove <style> tags from the content', () => {
+      const inputHtml = `
+            <h1>Hello</h1>
+            <style>body { color: red; }</style>
+        `;
+      const expectedHtml = `
+            <h1>Hello</h1>
+        `;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove comments from the content', () => {
+      const inputHtml = `
+            <h1>Hello</h1>
+            <!-- This is a comment -->
+        `;
+      const expectedHtml = `
+            <h1>Hello</h1>
+        `;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove comments from the content - case 2', () => {
+      const inputHtml = `<div><!-- foo --> bar <!-- baz --></div>`;
+      const expectedHtml = `<div> bar </div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should handle plain text content without any HTML', () => {
+      const inputHtml = `Just some plain text`;
+      const expectedHtml = `Just some plain text`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should not modify valid tags that are not <script>, <style>, or comments', () => {
+      const inputHtml = `
+            <h1>Hello</h1>
+            <p>This is a paragraph.</p>
+        `;
+      const expectedHtml = `
+            <h1>Hello</h1> <p>This is a paragraph.</p>
+        `;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove useless elements', () => {
+      const inputHtml = `
+            <h3> <span>Description du produit</span> </h3> <p> </p><p><span>Description du produit<br>Mortlach 12 ans est vieilli en fûts de Bourbon et de Xérès, non tourbé, il se distingue par son intensité, mais aussi par son caractère aérien, léger et vif. Doté d’une complexité particulière pour un malt de cet âge, cette référence possède un profil aromatique équilibré avec des arômes fruités et épicés accompagnés de notes fraîches et florales. Ce whisky associe la puissance structurelle d’un Single Malt au raffinement et à la complexité des plus grands blends.</span></p><p><span>Mode d'emploi<br>Stocker dans un endroit frais et sec</span></p> <p></p> <h3> <span>Mode d'emploi</span> </h3> <p> <span>Stocker dans un endroit frais et sec</span> </p> <div class="a-row a-expander-container a-expander-extend-container"> </div>
+        `;
+      const expectedHtml = `
+            <h3> <span>Description du produit</span> </h3> <p> </p><p><span>Description du produit<br>Mortlach 12 ans est vieilli en fûts de Bourbon et de Xérès, non tourbé, il se distingue par son intensité, mais aussi par son caractère aérien, léger et vif. Doté d’une complexité particulière pour un malt de cet âge, cette référence possède un profil aromatique équilibré avec des arômes fruités et épicés accompagnés de notes fraîches et florales. Ce whisky associe la puissance structurelle d’un Single Malt au raffinement et à la complexité des plus grands blends.</span></p><p><span>Mode d'emploi<br>Stocker dans un endroit frais et sec</span></p> <h3> <span>Mode d'emploi</span> </h3> <p> <span>Stocker dans un endroit frais et sec</span> </p> <div> </div>
+        `;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove useless elements - full case', () => {
+      const inputHtml = `<div>
+        <!-- This is a comment -->
+        <script>alert('Hello');</script>
+        <style>body { color: red; }</style>
+        <iframe src="https://example.com"></iframe>
+        <noscript>This browser does not support JavaScript.</noscript>
+        <base href="https://example.com" />
+        <link rel="stylesheet" href="styles.css" />
+        
+        <div class="container" style="margin: 0;">
+            <h1 onclick="alert('Click!')">Hello, World!</h1>
+            <p data-tracking="true">Welcome to the test.</p>
+            <a href="">Empty link</a>
+            <a>Missing href</a>
+            <a href="https://example.com">Valid link</a>
+            <div></div>
+            <img src="image.jpg" width="100" height="200" />
+            <img src="image2.jpg" />
+            <br />
+        </div>
+      </div>`;
+      const expectedHtml = `<div> <div> <h1>Hello, World!</h1> <p>Welcome to the test.</p> <a href="https://example.com">Valid link</a> <img src="image.jpg" width="100" height="200"/> <img src="image2.jpg"/> <br/> </div> </div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should replace span.a-text-bold with strong', () => {
+      const inputHtml = `<p>Un bon <span class="a-text-bold">single malt whisky</span> est apprécié.</p>`;
+      const expectedHtml = `<p>Un bon <strong>single malt whisky</strong> est apprécié.</p>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+  });
 });
