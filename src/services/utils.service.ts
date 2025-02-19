@@ -205,4 +205,15 @@ export class UtilsService {
 
     return cleanedInput;
   }
+
+  // Fonction générique pour supprimer les doublons d'un tableau d'objets
+  public removeDuplicates<T>(
+    array: T[],
+    keySelector: (item: T) => string,
+  ): T[] {
+    return array.filter(
+      (value, index, self) =>
+        index === self.findIndex((t) => keySelector(t) === keySelector(value)),
+    );
+  }
 }

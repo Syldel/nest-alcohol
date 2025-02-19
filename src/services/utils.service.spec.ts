@@ -405,4 +405,127 @@ describe('UtilsService', () => {
       expect(cleanNumberFormat('')).toBe('');
     });
   });
+
+  describe('removeDuplicates', () => {
+    describe('by value', () => {
+      it('should return array with unique elements when using keySelector function', () => {
+        const input = [
+          { legend: '1', value: 'John' },
+          { legend: '2', value: 'John' },
+          { legend: '3', value: 'Jane' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => item.value,
+        );
+        expect(result).toHaveLength(2);
+        expect(result).toEqual([
+          { legend: '1', value: 'John' },
+          { legend: '3', value: 'Jane' },
+        ]);
+      });
+
+      it('should return single element when all elements are duplicates', () => {
+        const input = [
+          { legend: '1', value: 'John' },
+          { legend: '2', value: 'John' },
+          { legend: '3', value: 'John' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => item.value,
+        );
+        expect(result).toHaveLength(1);
+        expect(result).toEqual([{ legend: '1', value: 'John' }]);
+      });
+
+      it('should preserve the original order of elements after removing duplicates', () => {
+        const input = [
+          { legend: '1', value: 'Alice' },
+          { legend: '2', value: 'Bob' },
+          { legend: '3', value: 'Alice' },
+          { legend: '4', value: 'Charlie' },
+          { legend: '5', value: 'Alfred' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => item.value,
+        );
+        expect(result).toEqual([
+          { legend: '1', value: 'Alice' },
+          { legend: '2', value: 'Bob' },
+          { legend: '4', value: 'Charlie' },
+          { legend: '5', value: 'Alfred' },
+        ]);
+      });
+    });
+
+    describe('by legend', () => {
+      it('should return array with unique elements when using keySelector function', () => {
+        const input = [
+          { legend: '1', value: 'John' },
+          { legend: '1', value: 'Joe' },
+          { legend: '1', value: 'Jasmin' },
+          { legend: '3', value: 'Jane' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => item.legend,
+        );
+        expect(result).toHaveLength(2);
+        expect(result).toEqual([
+          { legend: '1', value: 'John' },
+          { legend: '3', value: 'Jane' },
+        ]);
+      });
+    });
+
+    describe('by legend and value', () => {
+      it('should return array with unique elements when using keySelector function', () => {
+        const input = [
+          { legend: '1', value: 'John' },
+          { legend: '1', value: 'Joe' },
+          { legend: '1', value: 'Jasmin' },
+          { legend: '3', value: 'Jane' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => `${item.legend}-${item.value}`,
+        );
+        expect(result).toHaveLength(4);
+        expect(result).toEqual([
+          { legend: '1', value: 'John' },
+          { legend: '1', value: 'Joe' },
+          { legend: '1', value: 'Jasmin' },
+          { legend: '3', value: 'Jane' },
+        ]);
+      });
+
+      it('should return array with unique elements when using keySelector function', () => {
+        const input = [
+          { legend: '1', value: 'John' },
+          { legend: '1', value: 'Joe' },
+          { legend: '1', value: 'John' },
+          { legend: '3', value: 'Jane' },
+          { legend: '3', value: 'Jane' },
+        ];
+        const result = utilsService.removeDuplicates(
+          input,
+          (item) => `${item.legend}-${item.value}`,
+        );
+        expect(result).toHaveLength(3);
+        expect(result).toEqual([
+          { legend: '1', value: 'John' },
+          { legend: '1', value: 'Joe' },
+          { legend: '3', value: 'Jane' },
+        ]);
+      });
+    });
+
+    it('should return an empty array when input is empty', () => {
+      const input: any[] = [];
+      const result = utilsService.removeDuplicates(input, (item) => item);
+      expect(result).toEqual([]);
+    });
+  });
 });
