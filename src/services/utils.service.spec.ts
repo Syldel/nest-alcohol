@@ -325,4 +325,84 @@ describe('UtilsService', () => {
       expect(result).toBe(expected);
     });
   });
+
+  describe('extractNumbers', () => {
+    const extractNumbers = (input: string) =>
+      utilsService.extractNumbers(input);
+
+    it('should extract simple integers', () => {
+      const input = 'There are 42 apples and 15 oranges. And 1 ananas.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([42, 15, 1]);
+    });
+
+    it('should extract decimal numbers with dots', () => {
+      const input = 'The price is 12.34 $ and the discount is 5.5 %.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([12.34, 5.5]);
+    });
+
+    it('should extract decimal numbers with commas', () => {
+      const input = 'The amount is 12,34 € and the discount is 5,5 %.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([12.34, 5.5]);
+    });
+
+    it('should extract numbers with spaces as thousand separators', () => {
+      const input = 'The amount is 1 456,65 € or 1 134 456,56 $.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([1456.65, 1134456.56]);
+    });
+
+    it('should handle numbers with mixed dots and spaces', () => {
+      const input = 'Here is 1 234.56 or 12 345 678.9.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([1234.56, 12345678.9]);
+    });
+
+    it('should return an empty array if no numbers are found', () => {
+      const input = 'No numbers here!';
+      const result = extractNumbers(input);
+      expect(result).toEqual([]);
+    });
+
+    it('should extract negative numbers', () => {
+      const input = 'Temperature: -12,5°C and altitude: -1234 m.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([-12.5, -1234]);
+    });
+
+    it('should handle numbers with inconsistent separators', () => {
+      const input = 'Values: 1.234,56 and 12,34 and 1234.';
+      const result = extractNumbers(input);
+      expect(result).toEqual([1234.56, 12.34, 1234]);
+    });
+  });
+
+  describe('cleanNumberFormat', () => {
+    const cleanNumberFormat = (input: string) =>
+      utilsService.cleanNumberFormat(input);
+
+    it('should remove extra dots from numbers', () => {
+      expect(cleanNumberFormat('1.123.15')).toBe('1123.15');
+      expect(cleanNumberFormat('1.132.456.25')).toBe('1132456.25');
+    });
+
+    it('should handle numbers with commas as decimal separators', () => {
+      expect(cleanNumberFormat('12,345.67')).toBe('12345.67');
+      expect(cleanNumberFormat('1.234,56')).toBe('1234.56');
+    });
+
+    it('should handle numbers without any dots or commas', () => {
+      expect(cleanNumberFormat('1234')).toBe('1234');
+    });
+
+    it('should handle numbers with only a decimal part', () => {
+      expect(cleanNumberFormat('1234.56')).toBe('1234.56');
+    });
+
+    it('should handle empty strings', () => {
+      expect(cleanNumberFormat('')).toBe('');
+    });
+  });
 });

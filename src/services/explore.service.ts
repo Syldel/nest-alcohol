@@ -12,6 +12,7 @@ import { PriceItem } from '../alcohol/entities/price.entity';
 import { FamilyLink } from '../alcohol/entities/family-link.entity';
 import { CreateAlcoholInput } from '../alcohol/entities/create-alcohol-input.entity';
 import { Alcohol } from '../alcohol/entities/alcohol.entity';
+import { Reviews } from 'src/alcohol/entities/reviews.entity';
 
 type Link = {
   asin?: string;
@@ -345,8 +346,33 @@ export class ExploreService implements OnModuleInit {
           .text()
           ?.trim();
 
-        const reviews = `${avgCustomerReviews} (${customerReviewText})`;
-        console.log('reviews:', reviews);
+        const reviewsStr = `${avgCustomerReviews} (${customerReviewText})`;
+        console.log('reviewsStr:', reviewsStr);
+
+        let reviews: Reviews = null;
+        const ratingNumbers = this.utilsService.extractNumbers(reviewsStr);
+        if (ratingNumbers.length <= 3) {
+          if (ratingNumbers[1] === 5) {
+            reviews = {
+              rating: ratingNumbers[0],
+              ratingCount: ratingNumbers[2],
+            };
+          } else {
+            this.coloredLog(
+              ELogColor.FgRed,
+              `Reviews extracting numbers problem => ${ratingNumbers[1]} !== 5`,
+            );
+            this.stopExploration(true);
+            return;
+          }
+        } else {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `Reviews extracting numbers problem => ${ratingNumbers.length} > 3`,
+          );
+          this.stopExploration(true);
+          return;
+        }
 
         /* ********************************************************************************* */
 

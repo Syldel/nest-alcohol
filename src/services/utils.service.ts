@@ -176,4 +176,33 @@ export class UtilsService {
     cleanedHtml = cleanedHtml.trim();
     return cleanedHtml;
   }
+
+  public extractNumbers(input: string): number[] {
+    const matches = input.match(/-?\d+([\s.,]\d+)*([.,]\d+)?/g);
+
+    if (!matches) {
+      return [];
+    }
+
+    return matches.map((match) =>
+      parseFloat(this.cleanNumberFormat(match.replace(/\s/g, ''))),
+    );
+  }
+
+  public cleanNumberFormat(input: string): string {
+    if (!input) {
+      return '';
+    }
+
+    // Use a regex to clean the input
+    // 1. Remove commas used as thousand separators
+    // 2. Replace a comma as a decimal separator with a dot
+    // 3. Remove any extra dots except the one used as the decimal separator
+    const cleanedInput = input
+      .replace(/,/g, '.') // Replace all commas with dots
+      .replace(/\.(?=.*\.)/g, '') // Remove all dots except the last one
+      .replace(/\.([^.]*\.)/g, '.$1'); // Ensure only one dot is kept as the decimal separator
+
+    return cleanedInput;
+  }
 }

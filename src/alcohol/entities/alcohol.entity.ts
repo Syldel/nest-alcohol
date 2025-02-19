@@ -10,6 +10,7 @@ import { Description } from './description.entity';
 import { Images } from './images.entity';
 import { FamilyLink } from './family-link.entity';
 import { Timestamps } from './timestamps.entity';
+import { Reviews } from './reviews.entity';
 
 export type AlcoholDocument = Alcohol & Document;
 
@@ -73,10 +74,9 @@ export class Alcohol {
   @Prop({ type: [String], default: [] })
   breadcrumbs?: string[];
 
-  @Field(() => String, { nullable: true })
-  @Prop({ type: String, default: '' })
-  @IsString()
-  reviews?: string;
+  @Field(() => Reviews, { nullable: true })
+  @Prop({ type: Reviews, default: { rating: 0, ratingCount: 0 } })
+  reviews?: Reviews;
 }
 
 const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
