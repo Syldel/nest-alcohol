@@ -13,7 +13,8 @@ import { PriceItem } from '../alcohol/entities/price.entity';
 import { FamilyLink } from '../alcohol/entities/family-link.entity';
 import { CreateAlcoholInput } from '../alcohol/entities/create-alcohol-input.entity';
 import { Alcohol } from '../alcohol/entities/alcohol.entity';
-import { Reviews } from 'src/alcohol/entities/reviews.entity';
+import { Reviews } from '../alcohol/entities/reviews.entity';
+import { Details } from '../alcohol/entities/details.entity';
 
 type Link = {
   asin?: string;
@@ -31,8 +32,6 @@ export class ExploreService implements OnModuleInit {
   private browser: Browser;
   private cheerioAPI: cheerio.CheerioAPI;
   private websiteExploreHost: string;
-
-  private notTranslatedKeys: string[] = [];
 
   private targetKeyword = 'whisky';
   private langCountryCode = 'fr_FR';
@@ -151,23 +150,22 @@ export class ExploreService implements OnModuleInit {
       }
 
       nextLink.explored = Date.now();
-      console.log('nextLink:', nextLink);
+      console.log('Updated Link:', nextLink);
       exploredLinks = this.links.filter(
-        (link) => link.explored === null,
+        (link) => link.explored !== null,
       )?.length;
       explorationPercent = this.utilsService.roundPercent(
         exploredLinks,
         this.links.length,
       );
       console.log(
-        'links restants',
+        'Explored links:',
         exploredLinks,
         '/',
         this.links.length,
         '-',
         explorationPercent,
       );
-      console.log('notTranslatedKeys', this.notTranslatedKeys);
 
       await this.jsonService.writeJsonFile(jsonExplorationPath, {
         data: this.links,
@@ -291,12 +289,17 @@ export class ExploreService implements OnModuleInit {
       }
 
       if ($('#ppd').length > 0) {
-        const breadStr = $('#wayfinding-breadcrumbs_container')
+        const breadStr = $('#wayfinding-breadcrumbs_feature_div')
           .text()
           ?.replace(/\s+|\n/g, ' ')
           .toLowerCase()
           .trim();
-        //console.log('wayfinding-breadcrumbs:', breadStr);
+
+        if (!breadStr) {
+          this.coloredLog(ELogColor.FgRed, `breadcrumbs hasn't be found!`);
+          this.stopExploration(true);
+          return;
+        }
 
         if (
           breadStr?.length > 0 &&
@@ -308,8 +311,8 @@ export class ExploreService implements OnModuleInit {
           );
           return;
         }
-        const breadcrumbs = breadStr.split(' › ');
-        console.log('breadcrumbs:', breadStr);
+        const breadcrumbs = breadStr.split('›').map((bread) => bread.trim());
+        console.log('breadcrumbs:', breadcrumbs);
 
         const metas = {
           title: $('meta[name="title"]').attr('content'),
@@ -377,15 +380,15 @@ export class ExploreService implements OnModuleInit {
 
         /* ********************************************************************************* */
 
-        const priceToPayStr = $(
-          '#ppd #apex_desktop #subscriptionPrice #sns-base-price .a-price.priceToPay',
-        )
+        const priceToPayStr = $('#ppd #apex_desktop .a-price.priceToPay')
+          .first()
           .text()
           ?.trim();
 
         const basisPriceStr = $(
-          '#ppd #apex_desktop #subscriptionPrice #sns-base-price .basisPrice .a-price :first-child',
+          '#ppd #apex_desktop .basisPrice .a-price :first-child',
         )
+          .first()
           .text()
           ?.trim();
 
@@ -401,6 +404,10 @@ export class ExploreService implements OnModuleInit {
             basisPrice,
             timestamp: Date.now(),
           });
+        } else {
+          this.coloredLog(ELogColor.FgRed, `No prices found!`);
+          this.stopExploration(true);
+          return;
         }
         console.log('prices:', prices);
 
@@ -440,74 +447,23 @@ export class ExploreService implements OnModuleInit {
 
         /* ******************************* */
 
-        const tableData = {};
+        let details: Details[] = [];
         $('#ppd table.a-normal.a-spacing-micro tbody tr').each((i, row) => {
-          const key = $(row).find('td.a-span3 span.a-text-bold').text().trim();
+          const legend = $(row)
+            .find('td.a-span3 span.a-text-bold')
+            .text()
+            .trim();
           const value = $(row)
             .find('td.a-span9 span.a-size-base.po-break-word')
             .text()
             .trim();
-          if (key) {
-            // Vérifier si la clé existe (pour éviter les lignes vides)
-            tableData[key] = value;
+          if (legend && value) {
+            details.push({
+              legend,
+              value,
+            });
           }
         });
-
-        const translations = {
-          Marque: 'brand',
-          "Type d'alcool": 'alcoholType',
-          Saveur: 'flavor',
-          "Nombre d'unités": 'unitCount',
-          "Nombre d'articles": 'numberOfItems',
-          "Nombre d'article(s) dans l'emballage": 'numberOfItems',
-          'Teneur en alcool': 'alcoholContent',
-          'Type de régime': 'dietType',
-          'Description du contenu du liquide': 'liquidContentsDescription',
-          "Forme de l'article": 'itemForm',
-          Format: 'itemForm',
-          'Volume liquide': 'liquidVolume',
-          "Nombre total d'unités": 'totalUnitCount',
-          'Code article international': 'internationalArticleCode',
-          "Poids de l'article": 'itemWeight',
-          'Poids du produit': 'itemWeight',
-          'Poids du colis': 'packageWeight',
-          Âge: 'age',
-          "Pays d'origine": 'countryOfOrigin',
-          Certification: 'certification',
-          'Volume indicatif': 'approximateVolume',
-          Fabricant: 'manufacturer',
-          'Région de production': 'productionRegion',
-          "Numéro du modèle de l'article": 'itemModelNumber',
-          Unités: 'units',
-          'Dimensions du produit (L x l x h)': 'productDimensions',
-          'Informations relatives aux allergènes': 'allergenInformation',
-          Allergènes: 'allergenInformation',
-          Description: 'description',
-          "Information sur l'emballage": 'packagingInformation',
-          'Suggestion de préparation': 'preparationSuggestion',
-          Spécialité: 'speciality',
-          'Conditions de conservation': 'storageConditions',
-          Millésime: 'vintage',
-          'Référence constructeur': 'manufacturerReference',
-          'Récompense(s)': 'prizes',
-        };
-
-        const infos = {};
-
-        for (const key in tableData) {
-          if (translations.hasOwnProperty(key)) {
-            infos[translations[key]] = tableData[key];
-          } else {
-            // Gérer les clés non traduites (facultatif)
-            infos[key] = tableData[key]; // Conserver la clé originale
-            this.coloredLog(ELogColor.FgMagenta, `Clé non traduite : ${key}`);
-            if (!this.notTranslatedKeys.find((val) => val === key)) {
-              this.notTranslatedKeys.push(key);
-            } else {
-              console.log(' > clé déjà présente');
-            }
-          }
-        }
 
         /* ******************************* */
         const featureBullets: string[] = [];
@@ -518,33 +474,27 @@ export class ExploreService implements OnModuleInit {
 
         /* ******************************* */
 
-        const tableTechData = {};
         $('#dp #productDetails_techSpec_section_1 tbody tr').each((i, row) => {
-          const key = $(row).find('th').text().trim();
+          const legend = $(row).find('th').text().trim();
           const value = $(row).find('td').text().trim();
-          if (key) {
-            tableTechData[key] = value;
+          if (legend && value) {
+            details.push({
+              legend,
+              value,
+            });
           }
         });
 
-        const infosTech = {};
+        // Supprimer tous les caractères U+200E (LRM)
+        details = details.map((d) => ({
+          legend: d.legend.replace(/\u200E/g, ''),
+          value: d.value.replace(/\u200E/g, ''),
+        }));
 
-        for (const key in tableTechData) {
-          if (translations.hasOwnProperty(key)) {
-            infosTech[translations[key]] = tableTechData[key];
-          } else {
-            infosTech[key] = tableTechData[key]; // Conserver la clé originale
-            this.coloredLog(ELogColor.FgMagenta, `Clé non traduite : ${key}`);
-            if (!this.notTranslatedKeys.find((val) => val === key)) {
-              this.notTranslatedKeys.push(key);
-            } else {
-              console.log(' > clé déjà présente');
-            }
-          }
-        }
-
-        const mergedInfos = { ...infos, ...infosTech };
-        console.log('mergedInfos:', mergedInfos);
+        details = this.utilsService.removeDuplicates(
+          details,
+          (item) => `${item.legend}-${item.value}`,
+        );
 
         /* ******************************* */
 
@@ -610,7 +560,7 @@ export class ExploreService implements OnModuleInit {
             bigs: images,
             thumbnails,
           },
-          infos: mergedInfos,
+          details,
           features: featureBullets,
           description: {
             product: productDescription,

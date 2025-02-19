@@ -11,6 +11,7 @@ import { Images } from './images.entity';
 import { FamilyLink } from './family-link.entity';
 import { Timestamps } from './timestamps.entity';
 import { Reviews } from './reviews.entity';
+import { Details } from './details.entity';
 
 export type AlcoholDocument = Alcohol & Document;
 
@@ -58,10 +59,6 @@ export class Alcohol {
   @Prop({ type: [String], default: [] })
   features?: string[];
 
-  @Field(() => [String], { nullable: true })
-  @Prop({ type: Map, of: String, required: false })
-  infos?: Record<string, string>;
-
   @Field(() => Images, { nullable: true })
   @Prop({ type: Images, required: false })
   images?: Images;
@@ -77,6 +74,10 @@ export class Alcohol {
   @Field(() => Reviews, { nullable: true })
   @Prop({ type: Reviews, default: { rating: 0, ratingCount: 0 } })
   reviews?: Reviews;
+
+  @Field(() => [Details], { nullable: true })
+  @Prop({ type: [Details], required: false })
+  details?: Details[];
 }
 
 const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
