@@ -78,6 +78,10 @@ export class Alcohol {
   @Field(() => [Details], { nullable: true })
   @Prop({ type: [Details], required: false })
   details?: Details[];
+
+  @Field(() => FamilyLink, { nullable: true })
+  @Prop({ type: FamilyLink, required: false })
+  newerVersion?: FamilyLink;
 }
 
 const AlcoholSchema = SchemaFactory.createForClass(Alcohol);

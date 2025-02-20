@@ -318,4 +318,89 @@ describe('ExploreService', () => {
       expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
     });
   });
+
+  describe('getFirstValidElement', () => {
+    const getFirstValidElement = (
+      ...args: [any, string, 'text' | 'href', number?]
+    ) => exploreService.getFirstValidElement(...args);
+
+    // Créer un mock de l'API Cheerio
+    const mockCheerioAPI = {
+      length: 0,
+      eq: jest.fn(),
+      text: jest.fn(),
+      attr: jest.fn(),
+    };
+    let $: jest.Mock;
+
+    beforeEach(() => {
+      mockCheerioAPI.length = 0;
+      mockCheerioAPI.eq.mockReset();
+      mockCheerioAPI.text.mockReset();
+      mockCheerioAPI.attr.mockReset();
+
+      // Créer une fonction $ qui retourne notre API mockée
+      $ = jest.fn(() => mockCheerioAPI);
+    });
+
+    it('should return the first valid text', () => {
+      mockCheerioAPI.length = 3;
+      mockCheerioAPI.eq.mockImplementation((index) => {
+        if (index === 0) return { text: () => '  ', attr: () => null };
+        if (index === 1) return { text: () => 'Valid Text', attr: () => null };
+        return { text: () => '', attr: () => null };
+      });
+
+      const result = getFirstValidElement($, '.a-link-normal', 'text');
+      expect(result).toBe('Valid Text');
+      expect(mockCheerioAPI.eq).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return the first valid href', () => {
+      mockCheerioAPI.length = 4;
+      mockCheerioAPI.eq.mockImplementation((index) => {
+        if (index === 0) return { text: () => null, attr: () => null };
+        if (index === 1) return { text: () => null, attr: () => null };
+        if (index === 2)
+          return { text: () => null, attr: () => 'https://example.com' };
+        return { text: () => null, attr: () => '' };
+      });
+
+      const result = getFirstValidElement($, '.a-link-normal', 'href');
+      expect(result).toBe('https://example.com');
+      expect(mockCheerioAPI.eq).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return null if no valid text is found', () => {
+      mockCheerioAPI.length = 2;
+      mockCheerioAPI.eq.mockImplementation(() => ({
+        text: () => '',
+        attr: () => null,
+      }));
+
+      const result = getFirstValidElement($, '.a-link-normal', 'text');
+      expect(result).toBeNull();
+      expect(mockCheerioAPI.eq).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return null if no valid href is found', () => {
+      mockCheerioAPI.length = 2;
+      mockCheerioAPI.eq.mockImplementation(() => ({
+        text: () => null,
+        attr: () => null,
+      }));
+
+      const result = getFirstValidElement($, '.a-link-normal', 'href');
+      expect(result).toBeNull();
+      expect(mockCheerioAPI.eq).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return null if selector matches no elements', () => {
+      mockCheerioAPI.length = 0;
+
+      const result = getFirstValidElement($, '.non-existent', 'text');
+      expect(result).toBeNull();
+      expect(mockCheerioAPI.eq).not.toHaveBeenCalled();
+    });
+  });
 });

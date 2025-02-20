@@ -380,6 +380,46 @@ export class ExploreService implements OnModuleInit {
 
         /* ********************************************************************************* */
 
+        let newerVersion: FamilyLink;
+
+        if (
+          $('#ppd #newerVersion_feature_div').length > 0 ||
+          $('#ppd #newer-version').length > 0
+        ) {
+          this.coloredLog(ELogColor.FgMagenta, `A newer version exists!`);
+
+          const nvSelector =
+            $('#ppd #newer-version').length > 0
+              ? '#ppd #newer-version'
+              : '#ppd #newerVersion_feature_div';
+
+          const nvText = this.getFirstValidElement(
+            $,
+            `${nvSelector} .a-link-normal`,
+            'text',
+          );
+          const nvHref = this.getFirstValidElement(
+            $,
+            `${nvSelector} .a-link-normal`,
+            'href',
+          );
+          const nvImgSrc = this.getFirstValidElement(
+            $,
+            `${nvSelector} img`,
+            'src',
+          );
+
+          newerVersion = {
+            asin: this.extractASIN(nvHref),
+            title: nvText,
+            thumbSrc: this.processImageUrl(nvImgSrc),
+          };
+
+          console.log('newerVersion:', newerVersion);
+        }
+
+        /* ********************************************************************************* */
+
         const priceToPayStr = $('#ppd #apex_desktop .a-price.priceToPay')
           .first()
           .text()
@@ -404,21 +444,10 @@ export class ExploreService implements OnModuleInit {
             basisPrice,
             timestamp: Date.now(),
           });
-        } else {
-          this.coloredLog(ELogColor.FgRed, `No prices found!`);
-          this.stopExploration(true);
-          return;
         }
         console.log('prices:', prices);
 
         /* ********************************************************************************* */
-
-        // console.log(
-        //   'vatMessage',
-        //   $('#ppd #apex_desktop_snsAccordionRowMiddle #vatMessage_feature_div')
-        //     .text()
-        //     ?.trim(),
-        // );
 
         const { images, thumbnails } = await this.getViewerImages($);
         console.log('images:', images);
@@ -570,9 +599,8 @@ export class ExploreService implements OnModuleInit {
           shortlink,
           type: this.targetKeyword,
           langCode: this.langCountryCode,
+          newerVersion,
         };
-
-        //console.log('finalAlcohol', finalAlcohol);
 
         return finalAlcohol;
       }
@@ -879,5 +907,35 @@ export class ExploreService implements OnModuleInit {
     htmlContent = decode(htmlContent);
 
     return htmlContent;
+  }
+
+  public getFirstValidElement(
+    $: cheerio.CheerioAPI,
+    selector: string,
+    type = 'text',
+    index = 0,
+  ) {
+    const elements = $(selector);
+
+    if (index >= elements.length) {
+      return null;
+    }
+
+    const element = elements.eq(index);
+
+    let value = null;
+    if (type === 'text') {
+      value = element.text().trim();
+    } else if (type === 'href') {
+      value = element.attr('href');
+    } else if (type === 'src') {
+      value = element.attr('src');
+    }
+
+    if (value) {
+      return value;
+    }
+
+    return this.getFirstValidElement($, selector, type, index + 1);
   }
 }
