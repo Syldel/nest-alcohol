@@ -56,6 +56,30 @@ export class AlcoholService extends BaseService {
     return this.alcoholModel.find(query).exec();
   }
 
+  async getAllBrands(filter?: AlcoholFilterInput): Promise<string[]> {
+    const matchStage: any = { 'details.legend': 'Marque' };
+
+    if (filter?.type) {
+      matchStage.type = filter.type;
+    }
+
+    if (filter?.langCode) {
+      matchStage.langCode = filter.langCode;
+    }
+
+    const result = await this.alcoholModel
+      .aggregate([
+        { $match: matchStage }, // Appliquer les filtres
+        { $unwind: '$details' }, // Éclater le tableau "details"
+        { $match: { 'details.legend': 'Marque' } }, // Filtrer uniquement les marques
+        { $group: { _id: '$details.value' } }, // Grouper par marque (valeur unique)
+        { $sort: { _id: 1 } }, // Trier par ordre alphabétique
+      ])
+      .exec();
+
+    return result.map((item) => item._id);
+  }
+
   async create(input: CreateAlcoholInput): Promise<Alcohol> {
     const errors = await validateCreateAlcoholInput(input);
     if (errors.length > 0) {

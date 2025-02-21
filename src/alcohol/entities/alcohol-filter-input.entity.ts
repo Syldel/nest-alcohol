@@ -20,6 +20,12 @@ export class AlcoholFilterInput {
   @Field({ nullable: true })
   name?: string;
 
+  @Field({ nullable: true })
+  langCode?: string;
+
+  @Field({ nullable: true })
+  type?: string;
+
   @Field(() => DetailFilterInput, { nullable: true })
   detail?: DetailFilterInput;
 }
