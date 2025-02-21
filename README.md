@@ -43,12 +43,16 @@ $ npm run test:cov
 ## Use GraphQL
 
 In playground :
-```json
+```gql
 {
-  alcohols {
+  alcohols(filter: { detail: { value: "ABERLOUR" } }) {
     _id
     asin
     name
+    details {
+      legend
+      value
+    }
   }
 }
 ```
@@ -59,14 +63,19 @@ You will get something like :
   "data": {
     "alcohols": [
       {
-        "_id": "67aa38b1bc471848fa9193c9",
-        "asin": "654321",
-        "name": "Glenfiddich"
-      },
-      {
-        "_id": "67af4c891e0831d9e34f6abd",
-        "asin": "B0D9P873MJ",
-        "name": "SirDavis Rye Whisky 44% 70cL"
+        "_id": "67b76b98e421063b510c5ee8",
+        "asin": "B00LDNC01U",
+        "name": "ABERLOUR White Oak Whisky Ecossais Single Malt - 40%, 70cl",
+        "details": [
+          {
+            "legend": "Marque",
+            "value": "ABERLOUR"
+          },
+          {
+            "legend": "Type d'alcool",
+            "value": "Single Malt"
+          }
+        ]
       }
     ]
   }
@@ -78,7 +87,7 @@ With CURL:
 ```bash
 #!/bin/bash
 
-QUERY='{ alcohols { _id asin name } }'
+QUERY='{ alcohols(filter: {}) { _id asin name } }'
 
 curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"$QUERY\"}" http://localhost:3000/graphql
 ```

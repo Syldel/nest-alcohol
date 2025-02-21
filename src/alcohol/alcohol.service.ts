@@ -7,12 +7,13 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
+import { BaseService } from '../services';
 import { Alcohol, AlcoholDocument } from './entities/alcohol.entity';
 import {
   CreateAlcoholInput,
   validateCreateAlcoholInput,
 } from './entities/create-alcohol-input.entity';
-import { BaseService } from '../services';
+import { AlcoholFilterInput } from './entities/alcohol-filter-input.entity';
 
 @Injectable()
 export class AlcoholService extends BaseService {
@@ -23,12 +24,36 @@ export class AlcoholService extends BaseService {
     super();
   }
 
-  async findAll(): Promise<Alcohol[]> {
-    return this.alcoholModel.find().exec();
-  }
-
   async findOne(id: string): Promise<Alcohol> {
     return this.alcoholModel.findById(id).exec();
+  }
+
+  async findByFilter(filter?: AlcoholFilterInput): Promise<Alcohol[]> {
+    const query: any = {};
+
+    if (filter?._id) {
+      query._id = filter._id;
+    }
+
+    if (filter?.asin) {
+      query.asin = filter.asin;
+    }
+
+    if (filter?.name) {
+      // 'i' pour insensible à la casse
+      query.name = { $regex: filter.name, $options: 'i' };
+    }
+
+    if (filter?.detail) {
+      query.details = {
+        $elemMatch: {
+          ...(filter.detail.legend && { legend: filter.detail.legend }),
+          ...(filter.detail.value && { value: filter.detail.value }),
+        },
+      };
+    }
+
+    return this.alcoholModel.find(query).exec();
   }
 
   async create(input: CreateAlcoholInput): Promise<Alcohol> {
