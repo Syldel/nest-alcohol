@@ -1,4 +1,4 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { IsString } from 'class-validator';
@@ -9,15 +9,17 @@ import { PriceItem } from './price.entity';
 import { Description } from './description.entity';
 import { Images } from './images.entity';
 import { FamilyLink } from './family-link.entity';
-import { Timestamps } from './timestamps.entity';
 import { Reviews } from './reviews.entity';
 import { Details } from './details.entity';
 
 export type AlcoholDocument = Alcohol & Document;
 
 @ObjectType()
-@Schema()
+@Schema({ timestamps: true })
 export class Alcohol {
+  @Field(() => ID)
+  _id: string;
+
   @Field()
   @Prop()
   @IsString()
@@ -45,10 +47,6 @@ export class Alcohol {
   @Field(() => Description, { nullable: true })
   @Prop({ type: Description, default: { product: '', images: [] } })
   description?: Description;
-
-  @Field(() => Timestamps, { nullable: true })
-  @Prop({ type: Timestamps, default: { created: Date.now } })
-  timestamps?: Timestamps;
 
   @Field(() => String, { nullable: true })
   @Prop({ type: String, default: '' })

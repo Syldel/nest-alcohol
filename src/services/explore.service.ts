@@ -382,16 +382,10 @@ export class ExploreService implements OnModuleInit {
 
         let newerVersion: FamilyLink;
 
-        if (
-          $('#ppd #newerVersion_feature_div').length > 0 ||
-          $('#ppd #newer-version').length > 0
-        ) {
+        if ($('#ppd #newer-version').length > 0) {
           this.coloredLog(ELogColor.FgMagenta, `A newer version exists!`);
 
-          const nvSelector =
-            $('#ppd #newer-version').length > 0
-              ? '#ppd #newer-version'
-              : '#ppd #newerVersion_feature_div';
+          const nvSelector = '#ppd #newer-version';
 
           const nvText = this.getFirstValidElement(
             $,
@@ -409,11 +403,13 @@ export class ExploreService implements OnModuleInit {
             'src',
           );
 
-          newerVersion = {
-            asin: this.extractASIN(nvHref),
-            title: nvText,
-            thumbSrc: this.processImageUrl(nvImgSrc),
-          };
+          if (nvText && nvHref && nvImgSrc) {
+            newerVersion = {
+              asin: this.extractASIN(nvHref),
+              title: nvText,
+              thumbSrc: this.processImageUrl(nvImgSrc),
+            };
+          }
 
           console.log('newerVersion:', newerVersion);
         }
@@ -576,9 +572,6 @@ export class ExploreService implements OnModuleInit {
         const finalAlcohol: CreateAlcoholInput = {
           asin: this.extractASIN(canonicalLink),
           // canonicalLink,
-          timestamps: {
-            created: Date.now(),
-          },
           // metas,
           // title,
           name: productTitle,
