@@ -45,7 +45,7 @@ $ npm run test:cov
 In playground :
 ```gql
 {
-  alcohols(filter: { detail: { value: "ABERLOUR" } }) {
+  alcohols(filter: { detail: { value: "ABERLOUR" }, type: "whisky", langCode: "fr_FR" }) {
     _id
     asin
     name
@@ -77,6 +77,45 @@ You will get something like :
           }
         ]
       }
+    ]
+  }
+}
+```
+
+In playground :
+```gql
+{
+  distinctValues(legend: "Marque", filter: { type: "whisky", langCode: "fr_FR" })
+}
+```
+
+You will get something like :
+```json
+{
+  "data": {
+    "distinctValues": [
+      "ABERLOUR",
+      "Glenmorangie",
+      "Jura",
+    ]
+  }
+}
+```
+
+In playground :
+```gql
+{
+  distinctValues(legend: "Type d'alcool", filter: { type: "whisky" })
+}
+```
+
+You will get something like :
+```json
+{
+  "data": {
+    "distinctValues": [
+      "Bourbon",
+      "Single Malt",
     ]
   }
 }

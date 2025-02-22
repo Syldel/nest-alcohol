@@ -40,15 +40,26 @@ export class AlcoholService extends BaseService {
     }
 
     if (filter?.name) {
-      // 'i' pour insensible à la casse
-      query.name = { $regex: filter.name, $options: 'i' };
+      query.name = { $regex: filter.name, $options: 'i' }; // 'i' pour insensible à la casse
+    }
+
+    if (filter?.type) {
+      query.type = filter.type;
+    }
+
+    if (filter?.langCode) {
+      query.langCode = filter.langCode;
     }
 
     if (filter?.detail) {
       query.details = {
         $elemMatch: {
-          ...(filter.detail.legend && { legend: filter.detail.legend }),
-          ...(filter.detail.value && { value: filter.detail.value }),
+          ...(filter.detail.legend && {
+            legend: { $regex: filter.detail.legend, $options: 'i' },
+          }), // Insensible à la casse et correspondance partielle
+          ...(filter.detail.value && {
+            value: { $regex: filter.detail.value, $options: 'i' },
+          }), // Insensible à la casse et correspondance partielle
         },
       };
     }
@@ -56,8 +67,24 @@ export class AlcoholService extends BaseService {
     return this.alcoholModel.find(query).exec();
   }
 
-  async getAllBrands(filter?: AlcoholFilterInput): Promise<string[]> {
-    const matchStage: any = { 'details.legend': 'Marque' };
+  /**
+   * Récupère une liste unique de valeurs pour une `legend` spécifique (ex: "Marque", "Pays").
+   *
+   * @param {string} legend - Le champ ciblé dans `details` (ex: "Marque", "Pays", "Type").
+   * @param {AlcoholFilterInput} [filter] - Filtre optionnel sur le type et la langue.
+   * @returns {Promise<string[]>} - Liste triée de valeurs uniques.
+   */
+  async getUniqueDetailsValues(
+    legend: string,
+    filter?: AlcoholFilterInput,
+  ): Promise<string[]> {
+    if (!legend) {
+      throw new Error("Le champ 'legend' est obligatoire.");
+    }
+
+    const matchStage: any = {
+      'details.legend': { $regex: legend, $options: 'i' },
+    };
 
     if (filter?.type) {
       matchStage.type = filter.type;
@@ -69,11 +96,15 @@ export class AlcoholService extends BaseService {
 
     const result = await this.alcoholModel
       .aggregate([
-        { $match: matchStage }, // Appliquer les filtres
-        { $unwind: '$details' }, // Éclater le tableau "details"
-        { $match: { 'details.legend': 'Marque' } }, // Filtrer uniquement les marques
-        { $group: { _id: '$details.value' } }, // Grouper par marque (valeur unique)
-        { $sort: { _id: 1 } }, // Trier par ordre alphabétique
+        { $match: matchStage },
+        { $unwind: '$details' },
+        {
+          $match: {
+            'details.legend': { $regex: legend, $options: 'i' },
+          },
+        },
+        { $group: { _id: '$details.value' } },
+        { $sort: { _id: 1 } },
       ])
       .exec();
 

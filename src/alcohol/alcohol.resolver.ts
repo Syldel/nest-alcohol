@@ -22,38 +22,19 @@ export class AlcoholResolver {
   }
 
   /**
-   * Récupère la liste des marques uniques présentes dans les détails des produits,
-   * avec des options de filtrage sur le type de produit et la langue.
+   * Récupère une liste unique de valeurs pour une `legend` donnée (ex: "Marque", "Pays").
    *
-   * @param {AlcoholFilterInput} [filter] - (Optionnel) Filtre permettant de restreindre les résultats
-   * en fonction du type de produit et/ou du code langue.
-   *
-   * @returns {Promise<string[]>} - Une liste de noms de marques uniques triées par ordre alphabétique.
-   *
-   * @example
-   * // Récupérer toutes les marques disponibles
-   * query {
-   *   brands
-   * }
-   *
-   * @example
-   * // Récupérer uniquement les marques pour un type spécifique (ex: "Whisky")
-   * query {
-   *   brands(filter: { type: "Whisky" })
-   * }
-   *
-   * @example
-   * // Récupérer les marques disponibles en français (langCode = "fr_FR")
-   * query {
-   *   brands(filter: { langCode: "fr_FR" })
-   * }
+   * @param {string} legend - Le champ ciblé dans `details`.
+   * @param {AlcoholFilterInput} [filter] - Filtre optionnel sur le type et la langue.
+   * @returns {Promise<string[]>} - Liste unique des valeurs correspondant à la `legend` demandée.
    */
   @Query(() => [String])
-  async brands(
+  async distinctValues(
+    @Args('legend') legend: string,
     @Args('filter', { type: () => AlcoholFilterInput, nullable: true })
     filter?: AlcoholFilterInput,
   ): Promise<string[]> {
-    return this.alcoholService.getAllBrands(filter);
+    return this.alcoholService.getUniqueDetailsValues(legend, filter);
   }
 
   @Mutation(() => Alcohol)
