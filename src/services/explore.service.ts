@@ -229,21 +229,43 @@ export class ExploreService implements OnModuleInit {
     this.coloredLog(ELogColor.FgCyan, `link canonical: ${canonicalLink}`);
 
     let link: Link;
-    if ($('.octopus-page-style').length > 0) {
-      $('.octopus-page-style .octopus-pc-item').each((index, element) => {
-        link = this.extractLink(index, element);
-        this.addExplorationLink(link);
-      });
-    }
+    // if ($('.octopus-page-style').length > 0) {
+    //   $('.octopus-page-style .octopus-pc-item').each((index, element) => {
+    //     link = this.extractLink(index, element);
+    //     this.addExplorationLink(link);
+    //   });
+    // }
 
     if ($('#search').length > 0) {
       $('#search [role="listitem"]').each((index, element) => {
         link = this.extractLink(index, element);
         this.addExplorationLink(link);
       });
+
+      $('#search [role="navigation"] .a-list-item').each((index, element) => {
+        link = this.extractLink(index, element);
+        this.addExplorationLink(link);
+      });
     }
 
     if ($('#dp').length > 0) {
+      const dpClass = $('#dp').attr('class');
+      console.log('#dp class', dpClass);
+      if (dpClass?.length > 0 && !dpClass.includes('alcoholic_beverage')) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          'alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!',
+        );
+        return;
+      }
+      if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          `${this.langCountryCode} IS NOT IN THE dpClass > RETURN!!!`,
+        );
+        return;
+      }
+
       $('#dp .a-carousel-card').each((index, element) => {
         link = this.extractLink(index, element);
         this.addExplorationLink(link);
@@ -268,23 +290,6 @@ export class ExploreService implements OnModuleInit {
       if (!shortlink) {
         this.coloredLog(ELogColor.FgRed, 'Shorlink is undefined!');
         this.stopExploration(true);
-        return;
-      }
-
-      const dpClass = $('#dp').attr('class');
-      console.log('#dp class', dpClass);
-      if (dpClass?.length > 0 && !dpClass.includes('alcoholic_beverage')) {
-        this.coloredLog(
-          ELogColor.FgRed,
-          'alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!',
-        );
-        return;
-      }
-      if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
-        this.coloredLog(
-          ELogColor.FgRed,
-          `${this.langCountryCode} IS NOT IN THE dpClass > RETURN!!!`,
-        );
         return;
       }
 
@@ -697,15 +702,22 @@ export class ExploreService implements OnModuleInit {
     const $element = this.cheerioAPI(element);
     // const titre = $element.find('.a-link-normal [data-rows]').text().trim();
     let href = $element.find('.a-link-normal').attr('href');
+    href = href ? href : $element.find('.s-pagination-item').attr('href');
 
     if (href && href.startsWith('/s?')) {
       const url = new URL(`${this.websiteExploreHost}${href}`);
       const params = new URLSearchParams(url.search);
       if (!params.get('k').includes(this.targetKeyword)) {
-        console.log(`k not includes ${this.targetKeyword} > RETURN\n`);
+        this.coloredLog(
+          ELogColor.FgRed,
+          `${params.get('k')} > k not includes ${this.targetKeyword} > RETURN\n`,
+        );
         return;
       }
       href = `/s?k=${encodeURI(params.get('k'))}`;
+      if (params.get('page')) {
+        href = `${href}&page=${encodeURI(params.get('page'))}`;
+      }
     }
 
     if (
@@ -713,7 +725,7 @@ export class ExploreService implements OnModuleInit {
       href.startsWith('http') &&
       !href.startsWith(this.websiteExploreHost)
     ) {
-      console.log('External link > RETURN\n');
+      this.coloredLog(ELogColor.FgRed, 'External link > RETURN\n');
       return;
     }
 
