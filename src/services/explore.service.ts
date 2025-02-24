@@ -74,6 +74,7 @@ export class ExploreService implements OnModuleInit {
   }
 
   public async start() {
+    await this.utilsService.waitSeconds(1000);
     console.log('ExploreService::start');
     if (!this.websiteExploreHost) {
       console.log('No WEBSITE_EXPLORE_HOST defined!');
@@ -111,6 +112,9 @@ export class ExploreService implements OnModuleInit {
     let productData: CreateAlcoholInput;
     let exploredLinks: number;
     let explorationPercent: string;
+    let allAsinLinks: number;
+    let exploredAsinLinks: number;
+    let explorationAsinPercent: string;
     let savedAlcohol: Alcohol;
     while (
       this.links.find((link) => link.explored === null) &&
@@ -159,13 +163,33 @@ export class ExploreService implements OnModuleInit {
         this.links.length,
       );
       console.log(
-        'Explored links:',
+        ' ALL Explored links:',
         exploredLinks,
         '/',
         this.links.length,
         '-',
         explorationPercent,
       );
+
+      /* ********************************************************* */
+      allAsinLinks = this.links.filter((link) => link.asin?.length > 0)?.length;
+      exploredAsinLinks = this.links.filter(
+        (link) => link.explored !== null && link.asin?.length > 0,
+      )?.length;
+      explorationAsinPercent = this.utilsService.roundPercent(
+        exploredAsinLinks,
+        allAsinLinks,
+      );
+      console.log(
+        'ASIN explored links:',
+        exploredAsinLinks,
+        '/',
+        allAsinLinks,
+        '-',
+        explorationAsinPercent,
+      );
+
+      /* ********************************************************* */
 
       await this.jsonService.writeJsonFile(jsonExplorationPath, {
         data: this.links,
