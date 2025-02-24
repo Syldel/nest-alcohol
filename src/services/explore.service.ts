@@ -303,7 +303,7 @@ export class ExploreService implements OnModuleInit {
           const { asin, thumbSrc, title } = link;
           familyLinks.push({
             asin,
-            thumbSrc: this.processImageUrl(thumbSrc),
+            thumbSrc: this.processImageUrl(thumbSrc, false),
             title,
           });
         }
@@ -629,10 +629,13 @@ export class ExploreService implements OnModuleInit {
     }
   }
 
-  private processImageUrl(url: string): string {
+  private processImageUrl(url: string, withParams = true): string {
     try {
       const id = this.extractImageIdFromUrl(url);
-      const params = this.extractImageParamsFromUrl(url);
+      let params: string;
+      if (withParams) {
+        params = this.extractImageParamsFromUrl(url);
+      }
 
       if (!id) {
         console.error(`URL invalide: ${url}`);

@@ -217,6 +217,66 @@ describe('ExploreService', () => {
     });
   });
 
+  describe('processImageUrl', () => {
+    let urlIdSpy: jest.SpyInstance;
+    let urlParamsSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      if (urlIdSpy) urlIdSpy.mockClear();
+      if (urlParamsSpy) urlParamsSpy.mockClear();
+    });
+
+    it('should return concatenated ID and params when valid URL is provided', () => {
+      const validUrl =
+        'https://example.com/image/123.__CR0,0,300,600_PT0_SX150_V1___.png';
+
+      urlIdSpy = jest
+        .spyOn(exploreService as any, 'extractImageIdFromUrl')
+        .mockReturnValue('123');
+      urlParamsSpy = jest
+        .spyOn(exploreService as any, 'extractImageParamsFromUrl')
+        .mockReturnValue('__CR0,0,300,600_PT0_SX150_V1___');
+
+      const result = exploreService['processImageUrl'](validUrl);
+
+      expect(result).toBe('123.__CR0,0,300,600_PT0_SX150_V1___');
+      expect(urlIdSpy).toHaveBeenCalledTimes(1);
+      expect(urlParamsSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return only image ID when params are not requested', () => {
+      const validUrl =
+        'https://example.com/image/123.__CR0,0,300,600_PT0_SX150_V1___.png';
+
+      urlIdSpy = jest
+        .spyOn(exploreService as any, 'extractImageIdFromUrl')
+        .mockReturnValue('123');
+      urlParamsSpy = jest
+        .spyOn(exploreService as any, 'extractImageParamsFromUrl')
+        .mockReturnValue(null);
+
+      const result = exploreService['processImageUrl'](validUrl, false);
+
+      expect(result).toBe('123');
+      expect(urlIdSpy).toHaveBeenCalledTimes(1);
+      expect(urlParamsSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should return null when URL is invalid', () => {
+      const invalidUrl = 'invalid-url';
+
+      urlIdSpy = jest
+        .spyOn(exploreService as any, 'extractImageIdFromUrl')
+        .mockReturnValue(null);
+      jest.spyOn(console, 'error').mockImplementation();
+
+      const result = exploreService['processImageUrl'](invalidUrl);
+
+      expect(result).toBeNull();
+      expect(console.error).toHaveBeenCalledWith(`URL invalide: ${invalidUrl}`);
+    });
+  });
+
   describe('optimizeHtml', () => {
     const optimizeHtml = (input: string) => exploreService.optimizeHtml(input);
 

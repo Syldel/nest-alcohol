@@ -30,7 +30,7 @@ export class JsonService {
     objectToWrite.jsonCreatedAtTime = nowDate.getTime();
 
     try {
-      await fs.writeJson(filePath, objectToWrite);
+      await fs.writeJson(filePath, objectToWrite, { spaces: 2 });
     } catch (err) {
       console.error(err);
       return false;

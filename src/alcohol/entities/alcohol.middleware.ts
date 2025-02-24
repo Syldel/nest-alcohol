@@ -3,7 +3,8 @@ import * as fs from 'fs-extra';
 export async function backupDocument(doc) {
   try {
     const targetKeyword = 'whisky';
-    const backupFilePath = `./jsons/${targetKeyword}-mongo-backup.json`;
+    const langCountryCode = 'fr_FR';
+    const backupFilePath = `./jsons/${targetKeyword}-${langCountryCode}-mongo-backup.json`;
     const collectionName = this.collection.name;
 
     // Charger ou initialiser le fichier de backup
