@@ -560,9 +560,17 @@ export class ExploreService implements OnModuleInit {
         productDescription = this.optimizeHtml(productDescription);
         console.log('productDescription:', productDescription);
 
+        const textDescription = productDescription
+          ? cheerio
+              .load(productDescription)
+              .text()
+              ?.replace(/\s+/g, ' ')
+              ?.trim()
+          : null;
+
         if (
           this.extractCleanText($('#dp #productDescription').html()) !==
-          cheerio.load(productDescription).text()?.replace(/\s+/g, ' ')?.trim()
+          textDescription
         ) {
           this.coloredLog(
             ELogColor.FgRed,
@@ -897,6 +905,10 @@ export class ExploreService implements OnModuleInit {
   }
 
   public optimizeHtml(html: string): string {
+    if (!html) {
+      return null;
+    }
+
     const $ = cheerio.load(html, { xml: true }, false);
 
     // Supprimer les balises inutiles
@@ -972,6 +984,10 @@ export class ExploreService implements OnModuleInit {
    * @returns The extracted text without unwanted elements.
    */
   public extractCleanText(html: string): string {
+    if (!html) {
+      return null;
+    }
+
     const $ = cheerio.load(html);
 
     $(

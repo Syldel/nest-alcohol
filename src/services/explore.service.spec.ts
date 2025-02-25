@@ -425,6 +425,25 @@ describe('ExploreService', () => {
       const expectedHtml = `<p>Un bon <strong>single malt whisky</strong> est apprécié.</p>`;
       expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
     });
+
+    it('should return null when input HTML is empty string, null or undefined', () => {
+      const resultEmptyString = optimizeHtml('');
+      const resultNull = optimizeHtml(null);
+      const resultUndefined = optimizeHtml(undefined);
+
+      expect(resultEmptyString).toBeNull();
+      expect(resultNull).toBeNull();
+      expect(resultUndefined).toBeNull();
+    });
+
+    it('should handle unclosed tags and return well-formed HTML', () => {
+      const inputHtml = `<p><div>Content <span class="a-text-bold">Bold Text`;
+      const result = optimizeHtml(inputHtml);
+      expect(result).toContain(
+        '<p><div>Content <strong>Bold Text</strong></div></p>',
+      );
+      expect(result).not.toContain('<span');
+    });
   });
 
   describe('extractCleanText', () => {
@@ -441,6 +460,16 @@ describe('ExploreService', () => {
       `;
       const expectedHtml = `This is a inside a paragraph. Some more text.`;
       expect(extractCleanText(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should return null when input HTML is empty string, null or undefined', () => {
+      const resultEmptyString = extractCleanText('');
+      const resultNull = extractCleanText(null);
+      const resultUndefined = extractCleanText(undefined);
+
+      expect(resultEmptyString).toBeNull();
+      expect(resultNull).toBeNull();
+      expect(resultUndefined).toBeNull();
     });
   });
 
