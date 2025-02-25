@@ -88,15 +88,15 @@ export class ExploreService implements OnModuleInit {
 
     if (!explorationData) {
       this.links = [
-        {
-          asin: 'B07BPLMSMC',
-          url: '/dp/B07BPLMSMC',
-          explored: null,
-        },
         // {
-        //   url: `/s?k=${this.targetKeyword}`,
+        //   asin: 'B07BPLMSMC',
+        //   url: '/dp/B07BPLMSMC',
         //   explored: null,
         // },
+        {
+          url: `/s?k=${this.targetKeyword}`,
+          explored: null,
+        },
       ];
 
       await this.jsonService.writeJsonFile(jsonExplorationPath, {
@@ -195,10 +195,14 @@ export class ExploreService implements OnModuleInit {
         data: this.links,
       });
 
-      this.coloredLog(ELogColor.FgCyan, `Wait 10s...`);
-      await this.utilsService.waitSeconds(10000);
+      this.coloredLog(ELogColor.FgCyan, `3 minutes left to wait...`);
+      await this.utilsService.waitSeconds(1 * 60 * 1000);
+      this.coloredLog(ELogColor.FgCyan, `2 minutes left to wait...`);
+      await this.utilsService.waitSeconds(1 * 60 * 1000);
+      this.coloredLog(ELogColor.FgCyan, `1 minute left to wait...`);
+      await this.utilsService.waitSeconds(1 * 60 * 1000);
 
-      break;
+      // break;
     }
 
     await this.browser.close();
@@ -553,12 +557,11 @@ export class ExploreService implements OnModuleInit {
         /* ******************************* */
 
         let productDescription = $('#dp #productDescription').html()?.trim();
-        productDescription = this.utilsService.cleanHtml(productDescription);
         productDescription = this.optimizeHtml(productDescription);
         console.log('productDescription:', productDescription);
 
         if (
-          $('#dp #productDescription').text()?.replace(/\s+/g, ' ')?.trim() !==
+          this.extractCleanText($('#dp #productDescription').html()) !==
           cheerio.load(productDescription).text()?.replace(/\s+/g, ' ')?.trim()
         ) {
           this.coloredLog(
@@ -897,7 +900,9 @@ export class ExploreService implements OnModuleInit {
     const $ = cheerio.load(html, { xml: true }, false);
 
     // Supprimer les balises inutiles
-    $('script, style, iframe, noscript, base, link[rel="stylesheet"]').remove();
+    $(
+      'script, a, style, iframe, noscript, base, link[rel="stylesheet"]',
+    ).remove();
 
     // Supprimer les commentaires
     $.root()
@@ -915,6 +920,14 @@ export class ExploreService implements OnModuleInit {
       })
       .remove();
 
+    // Sélectionner et supprimer tous les éléments ayant `display: none`
+    // $('[style]').each((_, el) => {
+    //   const style = $(el).attr('style') || '';
+    //   if (/display\s*:\s*none/i.test(style)) {
+    //     $(el).remove();
+    //   }
+    // });
+
     // Supprimer les balises vides (sauf exceptions)
     $('*:empty').not('img, br, meta, link').remove();
 
@@ -922,13 +935,25 @@ export class ExploreService implements OnModuleInit {
       $(this).replaceWith(`<strong>${$(this).html()}</strong>`);
     });
 
+    // Sélectionner tous les éléments ayant un attribut commençant par "data-"
+    $.root()
+      .find('*')
+      .each((_, element) => {
+        const el = $(element);
+        Object.keys(el.attr() || {}).forEach((attr) => {
+          if (attr.startsWith('data-')) {
+            el.removeAttr(attr);
+          }
+        });
+      });
+
     // Nettoyer les attributs inutiles
-    $('[style], [class], [data-tracking], [onclick], [onmouseover]').removeAttr(
-      'style class data-tracking onclick onmouseover',
+    $('[style], [class], [onclick], [onmouseover]').removeAttr(
+      'style class onclick onmouseover',
     );
 
     // Supprimer les liens <a> sans href
-    $('a:not([href]), a[href=""]').remove();
+    // $('a:not([href]), a[href=""]').remove();
 
     let htmlContent = $.html().replace(/\s+/g, ' ').trim();
 
@@ -939,6 +964,22 @@ export class ExploreService implements OnModuleInit {
     htmlContent = decode(htmlContent);
 
     return htmlContent;
+  }
+
+  /**
+   * Extracts text from an HTML string, removing specified elements before extraction.
+   * @param html - The input HTML string.
+   * @returns The extracted text without unwanted elements.
+   */
+  public extractCleanText(html: string): string {
+    const $ = cheerio.load(html);
+
+    $(
+      'script, a, style, iframe, noscript, base, link[rel="stylesheet"]',
+    ).remove();
+
+    // Extraire et nettoyer le texte
+    return $.root().text().replace(/\s+/g, ' ').trim();
   }
 
   public getFirstValidElement(

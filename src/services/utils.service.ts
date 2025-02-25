@@ -148,7 +148,8 @@ export class UtilsService {
    * - Les balises <script> et leur contenu,
    * - Les commentaires HTML,
    * - Les balises <a> et leur contenu,
-   * - Les balises <div> (et similaires) contenant `style="display:none"` avec tout leur contenu,
+   * - Les class="***",
+   * - Les style="***",
    * - Les espaces en trop.
    * @param htmlString - La chaîne HTML à nettoyer.
    * @returns La chaîne HTML nettoyée.
@@ -163,10 +164,13 @@ export class UtilsService {
     cleanedHtml = cleanedHtml.replace(/<a.*?>.*?<\/a>/gs, '');
 
     // Supprime les éléments contenant style="display:none"
-    cleanedHtml = cleanedHtml.replace(
-      /<div[^>]*style=["']?display\s*:\s*none.*?>.*?<\/div>/gis,
-      '',
-    );
+    // cleanedHtml = cleanedHtml.replace(
+    //   /<div[^>]*style=["']?display\s*:\s*none.*?>.*?<\/div>/gis,
+    //   '',
+    // );
+
+    cleanedHtml = cleanedHtml.replace(/\s*class="[^"]*"/g, '');
+    cleanedHtml = cleanedHtml.replace(/\s*style="[^"]*"/g, '');
 
     // Supprime les attributs data-*
     cleanedHtml = cleanedHtml.replace(/\s*data-[^=]+="[^"]*"/g, '');

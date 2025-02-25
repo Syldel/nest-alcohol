@@ -294,16 +294,16 @@ describe('UtilsService', () => {
                 </script>
                 <div class="a-expander-content">Voir plus</div>`;
       const expected =
-        '<h3> <span>Description du produit</span> </h3> <p><span>Description du produit<br>Bulleit 10 ans, issu de réserves sélectionnées par Tom Bulleit, arrière petit-fils du fondateur de la distillerie, est une nouvelle expression du Bulleit Bourbon.</p></span> <div class=\"a-expander-content\">Voir plus</div>';
+        '<h3> <span>Description du produit</span> </h3> <p><span>Description du produit<br>Bulleit 10 ans, issu de réserves sélectionnées par Tom Bulleit, arrière petit-fils du fondateur de la distillerie, est une nouvelle expression du Bulleit Bourbon.</p></span> <div>Voir plus</div>';
       const result = utilsService.cleanHtml(html);
       expect(result).toBe(expected);
     });
 
-    it('should remove data-*', () => {
+    it('should remove data-*, class', () => {
       const htmlInput = `<div data-csa-c-func-deps="aui-da-a-expander-toggle" data-csa-c-type="widget" data-csa-interaction-events="click" aria-expanded="false" role="button" href="javascript:void(0)" data-action="a-expander-toggle" class="a-expander-header a-declarative a-expander-extend-header" data-csa-c-id="16tcau-kqx4td-64fhow-kx7t4f">
   <i class="a-icon a-icon-extender-expand"></i><span class="a-expander-prompt">Voir plus</span></div>`;
       const expected =
-        '<div aria-expanded=\"false\" role=\"button\" href=\"javascript:void(0)\" class=\"a-expander-header a-declarative a-expander-extend-header\"> <i class=\"a-icon a-icon-extender-expand\"></i><span class=\"a-expander-prompt\">Voir plus</span></div>';
+        '<div aria-expanded="false" role="button" href="javascript:void(0)"> <i></i><span>Voir plus</span></div>';
       const result = utilsService.cleanHtml(htmlInput);
       expect(result).toBe(expected);
     });
@@ -317,10 +317,10 @@ describe('UtilsService', () => {
       expect(result).toBe(expected);
     });
 
-    it('should remove display none', () => {
+    it('should remove data-*, class and style', () => {
       const htmlInput = `<h3> <span>Description du produit</span> </h3><div data-expanded="false" class="a-expander-content a-expander-extend-content" style="display:none">    <h3> <span>Avertissement De Sûreté</span> </h3>        <p> <span>Interdiction de vente de boissons alcooliques aux mineurs de moins de 18 ans</span>  </p>        </div> <p>Après display none</p>`;
       const expected =
-        '<h3> <span>Description du produit</span> </h3> <p>Après display none</p>';
+        '<h3> <span>Description du produit</span> </h3><div> <h3> <span>Avertissement De Sûreté</span> </h3> <p> <span>Interdiction de vente de boissons alcooliques aux mineurs de moins de 18 ans</span> </p> </div> <p>Après display none</p>';
       const result = utilsService.cleanHtml(htmlInput);
       expect(result).toBe(expected);
     });

@@ -368,7 +368,55 @@ describe('ExploreService', () => {
             <br />
         </div>
       </div>`;
-      const expectedHtml = `<div> <div> <h1>Hello, World!</h1> <p>Welcome to the test.</p> <a href="https://example.com">Valid link</a> <img src="image.jpg" width="100" height="200"/> <img src="image2.jpg"/> <br/> </div> </div>`;
+      const expectedHtml = `<div> <div> <h1>Hello, World!</h1> <p>Welcome to the test.</p> <img src="image.jpg" width="100" height="200"/> <img src="image2.jpg"/> <br/> </div> </div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove data attributes', () => {
+      const inputHtml = `<div data-id="123" data-user="john" class="test"><p data-info="test" onclick="alert('Hello')">Hello World</p></div>`;
+      const expectedHtml = `<div><p>Hello World</p></div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove several things and data attributes', () => {
+      const inputHtml = `          <!-- show up to 2 reviews by default -->
+               <h3> <span>Description du produit</span> </h3>        <p> <span>J&amp;B Whisky 70cl.</span>  </p>          <h3> <span>Ingrédients</span> </h3>        <p> <span>J&amp;B Rare est un whisky écossais composé de 36 single malts et 6 whiskies de grains soigneusement assemblés selon la recette de Charlie Julian. Parfaitement équilibré, J&amp;B est un whisky de qualité, subtil, élégant qui n’a pas peur de casser les codes : sa bouteille verte et son étiquette jaune distinguent nettement J&amp;B Rare des autres whiskies. Révéler son caractère authentique et sa fraîcheur en le dégustant sec, sur glace ou en cocktail.</span>  </p>          <div data-a-expander-name="toggle_description" class="a-row a-expander-container a-expander-extend-container"> <script>
+                  P.when('A').execute(function(A) {
+                      A.on('a:expander:toggle_description:toggle:collapse', function(data) {
+                        window.scroll(0, data.expander.$expander[0].offsetTop-100);
+                      });
+                    });
+                </script>
+                <div data-expanded="false" class="a-expander-content a-expander-extend-content" style="overflow: hidden;">    <h3> <span>Mode d'emploi</span> </h3>        <p> <span>Stocker dans un endroit frais et sec</span>  </p>          <h3> <span>Avertissement De Sûreté</span> </h3>        <p> <span>Not for sale to minors. Alcohol abuse is dangerous for health. To consume with moderation</span>  </p>          <h3> <span>Clause de non-garantie</span> </h3>        <p> <span>Photographie non contractuelle. Les indications ci-dessus sont données à titre d'information. Elles ne sont pas forcément exhaustives et ne sauraient se substituer aux informations figurant sur l'emballage du produit qui font seules foi, et auxquelles vous êtes invités à vous reporter, notamment en cas d'intolérance alimentaire.</span>  </p>        </div> <div data-csa-c-func-deps="aui-da-a-expander-toggle" data-csa-c-type="widget" data-csa-interaction-events="click" aria-expanded="false" role="button" href="javascript:void(0)" data-action="a-expander-toggle" class="a-expander-header a-declarative a-expander-extend-header" data-a-expander-toggle="{&quot;allowLinkDefault&quot;:true, &quot;expand_prompt&quot;:&quot;Voir plus&quot;, &quot;collapse_prompt&quot;:&quot;Voir moins&quot;}" data-csa-c-id="di7swf-ejyd2h-bw84f1-j19l84"><i class="a-icon a-icon-extender-expand"></i><span class="a-expander-prompt">Voir plus</span></div> </div>`;
+      const expectedHtml = `<h3> <span>Description du produit</span> </h3> <p> <span>J&B Whisky 70cl.</span> </p> <h3> <span>Ingrédients</span> </h3> <p> <span>J&B Rare est un whisky écossais composé de 36 single malts et 6 whiskies de grains soigneusement assemblés selon la recette de Charlie Julian. Parfaitement équilibré, J&B est un whisky de qualité, subtil, élégant qui n’a pas peur de casser les codes : sa bouteille verte et son étiquette jaune distinguent nettement J&B Rare des autres whiskies. Révéler son caractère authentique et sa fraîcheur en le dégustant sec, sur glace ou en cocktail.</span> </p> <div> <div> <h3> <span>Mode d'emploi</span> </h3> <p> <span>Stocker dans un endroit frais et sec</span> </p> <h3> <span>Avertissement De Sûreté</span> </h3> <p> <span>Not for sale to minors. Alcohol abuse is dangerous for health. To consume with moderation</span> </p> <h3> <span>Clause de non-garantie</span> </h3> <p> <span>Photographie non contractuelle. Les indications ci-dessus sont données à titre d'information. Elles ne sont pas forcément exhaustives et ne sauraient se substituer aux informations figurant sur l'emballage du produit qui font seules foi, et auxquelles vous êtes invités à vous reporter, notamment en cas d'intolérance alimentaire.</span> </p> </div> <div aria-expanded="false" role="button" href="javascript:void(0)"><span>Voir plus</span></div> </div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove several things and links', () => {
+      const inputHtml = `          <!-- show up to 2 reviews by default -->
+               <h3> <span>Description du produit</span> </h3>        <p> <span>J&amp;B Whisky 70cl.</span>  </p>          <h3> <span>Ingrédients</span> </h3>        <p> <span>J&amp;B Rare est un whisky écossais composé de 36 single malts et 6 whiskies de grains soigneusement assemblés selon la recette de Charlie Julian. Parfaitement équilibré, J&amp;B est un whisky de qualité, subtil, élégant qui n’a pas peur de casser les codes : sa bouteille verte et son étiquette jaune distinguent nettement J&amp;B Rare des autres whiskies. Révéler son caractère authentique et sa fraîcheur en le dégustant sec, sur glace ou en cocktail.</span>  </p>          <div data-a-expander-name="toggle_description" class="a-row a-expander-container a-expander-extend-container"> <script>
+                  P.when('A').execute(function(A) {
+                      A.on('a:expander:toggle_description:toggle:collapse', function(data) {
+                        window.scroll(0, data.expander.$expander[0].offsetTop-100);
+                      });
+                    });
+                </script>
+                <div data-expanded="false" class="a-expander-content a-expander-extend-content" style="overflow: hidden;">    <h3> <span>Mode d'emploi</span> </h3>        <p> <span>Stocker dans un endroit frais et sec</span>  </p>          <h3> <span>Avertissement De Sûreté</span> </h3>        <p> <span>Not for sale to minors. Alcohol abuse is dangerous for health. To consume with moderation</span>  </p>          <h3> <span>Clause de non-garantie</span> </h3>        <p> <span>Photographie non contractuelle. Les indications ci-dessus sont données à titre d'information. Elles ne sont pas forcément exhaustives et ne sauraient se substituer aux informations figurant sur l'emballage du produit qui font seules foi, et auxquelles vous êtes invités à vous reporter, notamment en cas d'intolérance alimentaire.</span>  </p>        </div> <a data-csa-c-func-deps="aui-da-a-expander-toggle" data-csa-c-type="widget" data-csa-interaction-events="click" aria-expanded="false" role="button" href="javascript:void(0)" data-action="a-expander-toggle" class="a-expander-header a-declarative a-expander-extend-header" data-a-expander-toggle="{&quot;allowLinkDefault&quot;:true, &quot;expand_prompt&quot;:&quot;Voir plus&quot;, &quot;collapse_prompt&quot;:&quot;Voir moins&quot;}" data-csa-c-id="di7swf-ejyd2h-bw84f1-j19l84"><i class="a-icon a-icon-extender-expand"></i><span class="a-expander-prompt">Voir plus</span></a> </div>`;
+      const expectedHtml = `<h3> <span>Description du produit</span> </h3> <p> <span>J&B Whisky 70cl.</span> </p> <h3> <span>Ingrédients</span> </h3> <p> <span>J&B Rare est un whisky écossais composé de 36 single malts et 6 whiskies de grains soigneusement assemblés selon la recette de Charlie Julian. Parfaitement équilibré, J&B est un whisky de qualité, subtil, élégant qui n’a pas peur de casser les codes : sa bouteille verte et son étiquette jaune distinguent nettement J&B Rare des autres whiskies. Révéler son caractère authentique et sa fraîcheur en le dégustant sec, sur glace ou en cocktail.</span> </p> <div> <div> <h3> <span>Mode d'emploi</span> </h3> <p> <span>Stocker dans un endroit frais et sec</span> </p> <h3> <span>Avertissement De Sûreté</span> </h3> <p> <span>Not for sale to minors. Alcohol abuse is dangerous for health. To consume with moderation</span> </p> <h3> <span>Clause de non-garantie</span> </h3> <p> <span>Photographie non contractuelle. Les indications ci-dessus sont données à titre d'information. Elles ne sont pas forcément exhaustives et ne sauraient se substituer aux informations figurant sur l'emballage du produit qui font seules foi, et auxquelles vous êtes invités à vous reporter, notamment en cas d'intolérance alimentaire.</span> </p> </div> </div>`;
+      expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+
+    it('should remove data-*, style and class elements', () => {
+      const inputHtml = `<div>
+        <p style="display:none;">This paragraph should be removed</p>
+        <span>Visible text</span>
+        <div style="color: red; display:none;">Hidden div</div>
+        <span>Visible text 2</span>
+        <div style="color: red; display:none;"><p><span>Hidden div with inside tags</span></p></div>
+        <span>Visible text 3</span>
+        <div data-expanded="false" class="a-expander-content a-expander-extend-content" style="overflow: hidden; display: none;">    <h3> <span>Mode d'emploi</span> </h3>        <p> <span>Stocker dans un endroit frais et sec</span>  </p></div>
+      </div>`;
+      const expectedHtml = `<div> <p>This paragraph should be removed</p> <span>Visible text</span> <div>Hidden div</div> <span>Visible text 2</span> <div><p><span>Hidden div with inside tags</span></p></div> <span>Visible text 3</span> <div> <h3> <span>Mode d'emploi</span> </h3> <p> <span>Stocker dans un endroit frais et sec</span> </p></div> </div>`;
       expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
     });
 
@@ -376,6 +424,23 @@ describe('ExploreService', () => {
       const inputHtml = `<p>Un bon <span class="a-text-bold">single malt whisky</span> est apprécié.</p>`;
       const expectedHtml = `<p>Un bon <strong>single malt whisky</strong> est apprécié.</p>`;
       expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
+    });
+  });
+
+  describe('extractCleanText', () => {
+    const extractCleanText = (input: string) =>
+      exploreService.extractCleanText(input);
+
+    it('should extract clean text', () => {
+      const inputHtml = `
+      <div>
+        <script>alert('Hello');</script>
+        <p>This is a <a href="https://example.com">link</a> inside a paragraph.</p>
+        <span>Some more text.</span>
+      </div>
+      `;
+      const expectedHtml = `This is a inside a paragraph. Some more text.`;
+      expect(extractCleanText(inputHtml).trim()).toBe(expectedHtml.trim());
     });
   });
 
