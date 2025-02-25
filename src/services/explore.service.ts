@@ -560,13 +560,14 @@ export class ExploreService implements OnModuleInit {
         productDescription = this.optimizeHtml(productDescription);
         console.log('productDescription:', productDescription);
 
-        const textDescription = productDescription
-          ? cheerio
-              .load(productDescription)
-              .text()
-              ?.replace(/\s+/g, ' ')
-              ?.trim()
-          : null;
+        const textDescription =
+          productDescription !== null
+            ? cheerio
+                .load(productDescription)
+                .text()
+                ?.replace(/\s+/g, ' ')
+                ?.trim()
+            : null;
 
         if (
           this.extractCleanText($('#dp #productDescription').html()) !==
@@ -909,7 +910,7 @@ export class ExploreService implements OnModuleInit {
       return null;
     }
 
-    const $ = cheerio.load(html, { xml: true }, false);
+    let $ = cheerio.load(html, { xml: true }, false);
 
     // Supprimer les balises inutiles
     $(
@@ -917,20 +918,7 @@ export class ExploreService implements OnModuleInit {
     ).remove();
 
     // Supprimer les commentaires
-    $.root()
-      .contents()
-      .filter(function () {
-        return this.type === 'comment';
-      })
-      .remove();
-
-    $.root()
-      .find('*')
-      .contents()
-      .filter(function () {
-        return this.type === 'comment';
-      })
-      .remove();
+    $ = this.removeHtmlComments($);
 
     // Sélectionner et supprimer tous les éléments ayant `display: none`
     // $('[style]').each((_, el) => {
@@ -978,6 +966,25 @@ export class ExploreService implements OnModuleInit {
     return htmlContent;
   }
 
+  public removeHtmlComments($: cheerio.CheerioAPI): cheerio.CheerioAPI {
+    $.root()
+      .contents()
+      .filter(function () {
+        return this.type === 'comment';
+      })
+      .remove();
+
+    $.root()
+      .find('*')
+      .contents()
+      .filter(function () {
+        return this.type === 'comment';
+      })
+      .remove();
+
+    return $;
+  }
+
   /**
    * Extracts text from an HTML string, removing specified elements before extraction.
    * @param html - The input HTML string.
@@ -994,7 +1001,6 @@ export class ExploreService implements OnModuleInit {
       'script, a, style, iframe, noscript, base, link[rel="stylesheet"]',
     ).remove();
 
-    // Extraire et nettoyer le texte
     return $.root().text().replace(/\s+/g, ' ').trim();
   }
 
