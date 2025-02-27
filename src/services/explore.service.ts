@@ -41,7 +41,7 @@ export class ExploreService implements OnModuleInit {
   public stopExploration(state: boolean): void {
     this._stopExploration = state;
     if (state) {
-      this.coloredLog(ELogColor.FgRed, `STOP EXPLORATION!`);
+      this.coloredLog(ELogColor.FgRed, `■ STOP EXPLORATION!`);
     } else {
       this.coloredLog(ELogColor.FgYellow, `START EXPLORATION!`);
     }
@@ -67,7 +67,7 @@ export class ExploreService implements OnModuleInit {
 
   private addExplorationLink(link: Link) {
     if (link && link.addToExploration) {
-      this.coloredLog(ELogColor.FgGreen, `Lien ${link.url} ajouté!\n`);
+      this.coloredLog(ELogColor.FgGreen, `+ Lien ${link.url} ajouté!`);
       const { asin, url, explored } = link;
       this.links.push({ asin, url, explored });
     }
@@ -75,7 +75,7 @@ export class ExploreService implements OnModuleInit {
 
   public async start() {
     await this.utilsService.waitSeconds(1000);
-    console.log('ExploreService::start');
+    console.log('★ ExploreService::start');
     if (!this.websiteExploreHost) {
       console.log('No WEBSITE_EXPLORE_HOST defined!');
       return;
@@ -132,12 +132,12 @@ export class ExploreService implements OnModuleInit {
           if (error instanceof ConflictException) {
             this.coloredLog(
               ELogColor.FgYellow,
-              `Échec de la création du Alcohol : ${error.message}`,
+              `✘ Échec de la création du Alcohol : ${error.message}`,
             );
           } else {
             this.coloredLog(
               ELogColor.FgRed,
-              `Échec de la création du Alcohol : ${error.message}`,
+              `✘ Échec de la création du Alcohol : ${error.message}`,
             );
             this.stopExploration(true);
           }
@@ -163,7 +163,7 @@ export class ExploreService implements OnModuleInit {
         this.links.length,
       );
       console.log(
-        ' ALL Explored links:',
+        ' ALL explored links:',
         exploredLinks,
         '/',
         this.links.length,
@@ -254,31 +254,42 @@ export class ExploreService implements OnModuleInit {
     this.cheerioAPI = $;
 
     const canonicalLink = $('link[rel="canonical"]').attr('href');
-    this.coloredLog(ELogColor.FgCyan, `link canonical: ${canonicalLink}`);
+    this.coloredLog(ELogColor.FgCyan, `\nCanonical link: ${canonicalLink}`);
 
     let link: Link;
+    const pageLinks: Link[] = [];
     // if ($('.octopus-page-style').length > 0) {
     //   $('.octopus-page-style .octopus-pc-item').each((index, element) => {
     //     link = this.extractLink(index, element);
-    //     this.addExplorationLink(link);
+    //     pageLinks.push(link);
     //   });
     // }
 
     if ($('#search').length > 0) {
       $('#search [role="listitem"]').each((index, element) => {
         link = this.extractLink(index, element);
-        this.addExplorationLink(link);
+        pageLinks.push(link);
       });
 
       $('#search [role="navigation"] .a-list-item').each((index, element) => {
         link = this.extractLink(index, element);
-        this.addExplorationLink(link);
+        pageLinks.push(link);
       });
+
+      pageLinks.forEach((link) => this.addExplorationLink(link));
     }
 
     if ($('#dp').length > 0) {
       const dpClass = $('#dp').attr('class');
-      console.log('#dp class', dpClass);
+      console.log(
+        '#dp class:',
+        this.utilsService.coloredText(ELogColor.FgYellow, dpClass),
+      );
+      if (!dpClass || dpClass.length === 0) {
+        this.coloredLog(ELogColor.FgRed, 'Empty dpClass!');
+        this.stopExploration(true);
+        return;
+      }
       if (dpClass?.length > 0 && !dpClass.includes('alcoholic_beverage')) {
         this.coloredLog(
           ELogColor.FgRed,
@@ -296,13 +307,13 @@ export class ExploreService implements OnModuleInit {
 
       $('#dp .a-carousel-card').each((index, element) => {
         link = this.extractLink(index, element);
-        this.addExplorationLink(link);
+        pageLinks.push(link);
       });
 
       const familyLinks: FamilyLink[] = [];
       $('#dp .apm-tablemodule-table th').each((index, element) => {
         link = this.extractLinkFromTable(index, element);
-        this.addExplorationLink(link);
+        pageLinks.push(link);
         if (link && link.asin && link.thumbSrc && link.title) {
           const { asin, thumbSrc, title } = link;
           familyLinks.push({
@@ -338,6 +349,7 @@ export class ExploreService implements OnModuleInit {
           breadStr?.length > 0 &&
           !breadStr.includes(`${this.targetKeyword}s`)
         ) {
+          this.coloredLog(ELogColor.FgRed, `breadcrumbs: ${breadStr}`);
           this.coloredLog(
             ELogColor.FgRed,
             `${this.targetKeyword}s IS NOT IN THE breadcrumbs > RETURN!!!`,
@@ -346,6 +358,12 @@ export class ExploreService implements OnModuleInit {
         }
         const breadcrumbs = breadStr.split('›').map((bread) => bread.trim());
         console.log('breadcrumbs:', breadcrumbs);
+
+        /* ********************************************************************************* */
+
+        pageLinks.forEach((link) => this.addExplorationLink(link));
+
+        /* ********************************************************************************* */
 
         const metas = {
           title: $('meta[name="title"]').attr('content'),
@@ -479,8 +497,17 @@ export class ExploreService implements OnModuleInit {
         /* ********************************************************************************* */
 
         const { images, thumbnails } = await this.getViewerImages($);
-        console.log('images:', images);
-        console.log('thumbnails:', thumbnails);
+        console.log(
+          'images    :',
+          this.utilsService.coloredText(ELogColor.FgYellow, images.join(', ')),
+        );
+        console.log(
+          'thumbnails:',
+          this.utilsService.coloredText(
+            ELogColor.FgYellow,
+            thumbnails.join(', '),
+          ),
+        );
 
         if (images.length !== thumbnails.length) {
           this.coloredLog(
@@ -693,20 +720,20 @@ export class ExploreService implements OnModuleInit {
     let addToExploration = true;
     if (href?.length > 0) {
       if (this.links.find((obj) => obj.url === href)) {
-        this.coloredLog(ELogColor.FgRed, 'url already in links\n');
+        this.coloredLog(ELogColor.FgRed, 'url already in links');
         addToExploration = false;
       }
       const productId = this.extractASIN(href);
       console.log('asin:', productId);
       if (!productId && href.startsWith('/vdp/')) {
-        this.coloredLog(ELogColor.FgRed, 'vdp => Lien non ajouté!\n');
+        this.coloredLog(ELogColor.FgRed, 'vdp => Lien non ajouté!');
         addToExploration = false;
         return;
       }
       if (productId && this.links.find((obj) => obj.asin === productId)) {
         this.coloredLog(
           ELogColor.FgRed,
-          'ASIN already in links => Lien non ajouté!\n',
+          'ASIN already in links => Lien non ajouté!',
         );
         addToExploration = false;
       }
@@ -730,9 +757,9 @@ export class ExploreService implements OnModuleInit {
     const title = $element.find('a').text().trim();
     const href = $element.find('a').attr('href');
     const thumbSrc = $element.find('img').attr('src');
-    console.log('extractLinkFromTable title:', title);
-    console.log('extractLinkFromTable href:', href);
-    console.log('extractLinkFromTable thumbSrc:', thumbSrc);
+    console.log('♦ extractLinkFromTable title:', title);
+    console.log('♦ extractLinkFromTable href:', href);
+    console.log('♦ extractLinkFromTable thumbSrc:', thumbSrc);
 
     return this.manageLinkAdding(href, thumbSrc, title);
   }
@@ -749,7 +776,7 @@ export class ExploreService implements OnModuleInit {
       if (!params.get('k').includes(this.targetKeyword)) {
         this.coloredLog(
           ELogColor.FgRed,
-          `${params.get('k')} > k not includes ${this.targetKeyword} > RETURN\n`,
+          `${params.get('k')} > k not includes ${this.targetKeyword} > RETURN`,
         );
         return;
       }
@@ -764,7 +791,7 @@ export class ExploreService implements OnModuleInit {
       href.startsWith('http') &&
       !href.startsWith(this.websiteExploreHost)
     ) {
-      this.coloredLog(ELogColor.FgRed, 'External link > RETURN\n');
+      this.coloredLog(ELogColor.FgRed, 'External link > RETURN');
       return;
     }
 
@@ -774,9 +801,9 @@ export class ExploreService implements OnModuleInit {
     //   $element.find('.a-link-normal img').attr('data-a-dynamic-image') || '{}',
     // );
 
-    // console.log('extractLink titre:', titre);
-    console.log('extractLink href:', href);
-    console.log('extractLink thumbSrc:', thumbSrc);
+    // console.log('♦ extractLink titre:', titre);
+    console.log('♦ extractLink href:', href);
+    console.log('♦ extractLink thumbSrc:', thumbSrc);
 
     return this.manageLinkAdding(href, thumbSrc);
   }
@@ -900,7 +927,11 @@ export class ExploreService implements OnModuleInit {
         const textarea = document.querySelector(sel) as HTMLTextAreaElement;
         return textarea ? textarea.value : null;
       }, `#${shortlinkTextarea}`);
-      console.log('shortlink:', shortlink, '\n');
+      console.log(
+        'shortlink:',
+        this.utilsService.coloredText(ELogColor.FgYellow, shortlink),
+        '\n',
+      );
     }
     return shortlink;
   }
