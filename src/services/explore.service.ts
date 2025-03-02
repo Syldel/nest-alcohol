@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as cheerio from 'cheerio';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { decode } from 'entities';
+import { confirm, select } from '@clack/prompts';
 
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
@@ -64,6 +65,9 @@ export class ExploreService implements OnModuleInit {
 
   private coloredLog = (color: ELogColor, text: string) =>
     this.utilsService.coloredLog(color, text);
+
+  private coloredText = (color: ELogColor, text: string) =>
+    this.utilsService.coloredText(color, text);
 
   private addExplorationLink(link: Link) {
     if (link && link.addToExploration) {
@@ -149,7 +153,7 @@ export class ExploreService implements OnModuleInit {
       }
 
       if (this._stopExploration) {
-        this.coloredLog(ELogColor.FgRed, `> break while`);
+        this.coloredLog(ELogColor.FgRed, `■ break while`);
         break;
       }
 
@@ -243,6 +247,7 @@ export class ExploreService implements OnModuleInit {
   }
 
   async scraperWebsite(url: string) {
+    this.coloredLog(ELogColor.FgBlue, `\nurl: ${url}`);
     await this.page.goto(url);
     // ... extraction des données avec Puppeteer ...
 
@@ -254,10 +259,36 @@ export class ExploreService implements OnModuleInit {
     this.cheerioAPI = $;
 
     const canonicalLink = $('link[rel="canonical"]').attr('href');
-    this.coloredLog(ELogColor.FgCyan, `\nCanonical link: ${canonicalLink}`);
+    this.coloredLog(ELogColor.FgCyan, `Canonical link: ${canonicalLink}`);
+
+    if ($('title').text().includes('Page introuvable')) {
+      this.coloredLog(ELogColor.FgRed, 'Page introuvable !');
+      const answer = await this.showSomeInfosAndPrompt($);
+      if (answer === 'stop') {
+        this.stopExploration(true);
+        return;
+      }
+      if (answer === 'skip') {
+        return;
+      }
+    }
 
     let link: Link;
     const pageLinks: Link[] = [];
+
+    if ($('#search').length === 0 && $('#dp').length === 0) {
+      this.coloredLog(ELogColor.FgRed, `#search and #dp have not been found!`);
+      console.log($('#search').length, $('#dp').length);
+      const answer = await this.showSomeInfosAndPrompt($);
+      if (answer === 'stop') {
+        this.stopExploration(true);
+        return;
+      }
+      if (answer === 'skip') {
+        return;
+      }
+    }
+
     // if ($('.octopus-page-style').length > 0) {
     //   $('.octopus-page-style .octopus-pc-item').each((index, element) => {
     //     link = this.extractLink(index, element);
@@ -281,10 +312,7 @@ export class ExploreService implements OnModuleInit {
 
     if ($('#dp').length > 0) {
       const dpClass = $('#dp').attr('class');
-      console.log(
-        '#dp class:',
-        this.utilsService.coloredText(ELogColor.FgYellow, dpClass),
-      );
+      console.log('#dp class:', this.coloredText(ELogColor.FgYellow, dpClass));
       if (!dpClass || dpClass.length === 0) {
         this.coloredLog(ELogColor.FgRed, 'Empty dpClass!');
         this.stopExploration(true);
@@ -293,9 +321,17 @@ export class ExploreService implements OnModuleInit {
       if (dpClass?.length > 0 && !dpClass.includes('alcoholic_beverage')) {
         this.coloredLog(
           ELogColor.FgRed,
-          'alcoholic_beverage IS NOT IN THE dpClass > RETURN!!!',
+          `'alcoholic_beverage' IS NOT IN THE dpClass`,
         );
-        return;
+
+        const answer = await this.showSomeInfosAndPrompt($);
+        if (answer === 'stop') {
+          this.stopExploration(true);
+          return;
+        }
+        if (answer === 'skip') {
+          return;
+        }
       }
       if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
         this.coloredLog(
@@ -333,7 +369,7 @@ export class ExploreService implements OnModuleInit {
       }
 
       if ($('#ppd').length > 0) {
-        const breadStr = $('#wayfinding-breadcrumbs_feature_div')
+        let breadStr = $('#wayfinding-breadcrumbs_feature_div')
           .text()
           ?.replace(/\s+|\n/g, ' ')
           .toLowerCase()
@@ -354,7 +390,23 @@ export class ExploreService implements OnModuleInit {
             ELogColor.FgRed,
             `${this.targetKeyword}s IS NOT IN THE breadcrumbs > RETURN!!!`,
           );
-          return;
+
+          const answer = await this.showSomeInfosAndPrompt($);
+          if (answer === 'stop') {
+            this.stopExploration(true);
+            return;
+          }
+          if (answer === 'skip') {
+            return;
+          }
+
+          const nweBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›Whiskys`;
+          const replaceBreadcrumbs = await confirm({
+            message: `Do you want to replace breadcrumbs with '${nweBreadStr}'`,
+          });
+          if (replaceBreadcrumbs) {
+            breadStr = nweBreadStr;
+          }
         }
         const breadcrumbs = breadStr.split('›').map((bread) => bread.trim());
         console.log('breadcrumbs:', breadcrumbs);
@@ -390,13 +442,13 @@ export class ExploreService implements OnModuleInit {
         /* ********************************************************************************* */
 
         const avgCustomerReviews = $(
-          '#ppd #averageCustomerReviews #acrPopover a i >span',
+          '#ppd #averageCustomerReviews_feature_div #averageCustomerReviews #acrPopover a i >span',
         )
           .text()
           ?.trim();
 
         const customerReviewText = $(
-          '#ppd #averageCustomerReviews #acrCustomerReviewText',
+          '#ppd #averageCustomerReviews_feature_div #averageCustomerReviews #acrCustomerReviewText',
         )
           .text()
           ?.trim();
@@ -405,28 +457,30 @@ export class ExploreService implements OnModuleInit {
         console.log('reviewsStr:', reviewsStr);
 
         let reviews: Reviews = null;
-        const ratingNumbers = this.utilsService.extractNumbers(reviewsStr);
-        if (ratingNumbers.length <= 3) {
-          if (ratingNumbers[1] === 5) {
-            reviews = {
-              rating: ratingNumbers[0],
-              ratingCount: ratingNumbers[2],
-            };
+        if (avgCustomerReviews && customerReviewText) {
+          const ratingNumbers = this.utilsService.extractNumbers(reviewsStr);
+          if (ratingNumbers.length <= 3) {
+            if (ratingNumbers[1] === 5) {
+              reviews = {
+                rating: ratingNumbers[0],
+                ratingCount: ratingNumbers[2],
+              };
+            } else {
+              this.coloredLog(
+                ELogColor.FgRed,
+                `Reviews extracting numbers problem => ${ratingNumbers[1]} !== 5`,
+              );
+              this.stopExploration(true);
+              return;
+            }
           } else {
             this.coloredLog(
               ELogColor.FgRed,
-              `Reviews extracting numbers problem => ${ratingNumbers[1]} !== 5`,
+              `Reviews extracting numbers problem => ${ratingNumbers.length} > 3`,
             );
             this.stopExploration(true);
             return;
           }
-        } else {
-          this.coloredLog(
-            ELogColor.FgRed,
-            `Reviews extracting numbers problem => ${ratingNumbers.length} > 3`,
-          );
-          this.stopExploration(true);
-          return;
         }
 
         /* ********************************************************************************* */
@@ -499,14 +553,11 @@ export class ExploreService implements OnModuleInit {
         const { images, thumbnails } = await this.getViewerImages($);
         console.log(
           'images    :',
-          this.utilsService.coloredText(ELogColor.FgYellow, images.join(', ')),
+          this.coloredText(ELogColor.FgYellow, images.join(', ')),
         );
         console.log(
           'thumbnails:',
-          this.utilsService.coloredText(
-            ELogColor.FgYellow,
-            thumbnails.join(', '),
-          ),
+          this.coloredText(ELogColor.FgYellow, thumbnails.join(', ')),
         );
 
         if (images.length !== thumbnails.length) {
@@ -570,16 +621,47 @@ export class ExploreService implements OnModuleInit {
           }
         });
 
-        // Supprimer tous les caractères U+200E (LRM)
+        /* ******************************* */
+
+        $('#dp #detailBullets_feature_div li').each((i, element) => {
+          const $element = this.cheerioAPI(element);
+          const elValue = $element
+            .text()
+            ?.replace(/\s+|\n/g, ' ')
+            ?.trim();
+          const splitElVal = elValue.split(':');
+          if (splitElVal.length === 2) {
+            if (
+              splitElVal[0].includes('Fabricant') ||
+              splitElVal[0].includes('Pays') ||
+              splitElVal[0].includes('Région')
+            ) {
+              details.push({
+                legend: splitElVal[0].trim(),
+                value: splitElVal[1].trim(),
+              });
+              console.log(
+                '+ push in details:',
+                splitElVal[0].trim(),
+                '/',
+                splitElVal[1].trim(),
+              );
+            }
+          }
+        });
+
+        // Supprimer tous les caractères U+200E (LRM) et U+200F (RLM)
         details = details.map((d) => ({
-          legend: d.legend.replace(/\u200E/g, ''),
-          value: d.value.replace(/\u200E/g, ''),
+          legend: d.legend.replace(/[\u200E\u200F]/g, '').trim(),
+          value: d.value.replace(/[\u200E\u200F]/g, '').trim(),
         }));
 
         details = this.utilsService.removeDuplicates(
           details,
           (item) => `${item.legend}-${item.value}`,
         );
+
+        console.log('details', details);
 
         /* ******************************* */
 
@@ -929,7 +1011,7 @@ export class ExploreService implements OnModuleInit {
       }, `#${shortlinkTextarea}`);
       console.log(
         'shortlink:',
-        this.utilsService.coloredText(ELogColor.FgYellow, shortlink),
+        this.coloredText(ELogColor.FgYellow, shortlink),
         '\n',
       );
     }
@@ -1063,5 +1145,41 @@ export class ExploreService implements OnModuleInit {
     }
 
     return this.getFirstValidElement($, selector, type, index + 1);
+  }
+
+  public async showSomeInfosAndPrompt($: cheerio.CheerioAPI) {
+    console.log(
+      'breadcrumbs:',
+      this.coloredText(
+        ELogColor.FgYellow,
+        `${$('#wayfinding-breadcrumbs_feature_div').text()}`,
+      ),
+    );
+    console.log(
+      'brand:',
+      this.coloredText(
+        ELogColor.FgYellow,
+        `${$('#dp .po-brand td:nth-child(2)').text()?.trim()}`,
+      ),
+    );
+    console.log(
+      'alcohol_type:',
+      this.coloredText(
+        ELogColor.FgYellow,
+        `${$('#dp .po-alcohol_type td:nth-child(2)').text()?.trim()}`,
+      ),
+    );
+
+    return await select({
+      message: 'What are we doing?',
+      options: [
+        {
+          value: 'continue',
+          label: 'Continue (and extract product data anyway)',
+        },
+        { value: 'skip', label: 'Skip' },
+        { value: 'stop', label: 'Stop' },
+      ],
+    });
   }
 }
