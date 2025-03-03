@@ -131,6 +131,29 @@ QUERY='{ alcohols(filter: {}) { _id asin name } }'
 curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"$QUERY\"}" http://localhost:3000/graphql
 ```
 
+## Gzip compression
+
+Compression
+```sh
+curl -X POST http://localhost:3000/compress/compress -H "Content-Type: application/json" -d "{ \"data\": \"Hello, this is a test string\" }"
+```
+
+JSON response :
+```json
+{"compressed":"H4sIAAAAAAAACvNIzcnJ11EoycgsVsgsVkhUKEktLlEoLinKzEsHALVVIhUcAAAA"}
+```
+
+Décompression
+```sh
+curl -X POST http://localhost:3000/compress/decompress -H "Content-Type: application/json" -d "{ \"data\" : \"H4sIAAAAAAAACvNIzcnJ11EoycgsVsgsVkhUKEktLlEoLinKzEsHALVVIhUcAAAA=\" }
+```
+
+JSON response :
+```json
+{"decompressed":"Hello, this is a test string"}
+```
+
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

@@ -43,7 +43,8 @@
     "mongoose": "^7.8.6",
     "puppeteer": "^24.2.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "zlib": "^1.0.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
