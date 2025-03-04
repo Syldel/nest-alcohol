@@ -5,6 +5,7 @@ import { ExploreService } from './explore.service';
 import { UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
+import { CompressService } from '../compress/compress.service';
 
 describe('ExploreService', () => {
   let app: TestingModule;
@@ -32,6 +33,7 @@ describe('ExploreService', () => {
         ExploreService,
         UtilsService,
         JsonService,
+        CompressService,
       ],
     }).compile();
 
@@ -355,7 +357,7 @@ describe('ExploreService', () => {
         <noscript>This browser does not support JavaScript.</noscript>
         <base href="https://example.com" />
         <link rel="stylesheet" href="styles.css" />
-        
+
         <div class="container" style="margin: 0;">
             <h1 onclick="alert('Click!')">Hello, World!</h1>
             <p data-tracking="true">Welcome to the test.</p>
@@ -367,8 +369,25 @@ describe('ExploreService', () => {
             <img src="image2.jpg" />
             <br />
         </div>
+
+        <form method="post" action="/cart/add-to-cart/ref=emc_s_m_5_i_atc_c">
+          <!-- sp:csrf -->
+          <input type="hidden" name="anti-csrftoken-a2z" value="hNP+nYLZ2a0NgjDvsxMZ4k070ujAYYC6bj5OFVP/hIIyAAAAAGfFha9hYjA5NzNkYi04YzQ4LTRkOGMtOWFiZS01NDEyYjE1ZDYzY2E=">
+          <!-- sp:end-csrf -->
+          <input type="hidden" name="items[0.base][asin]" value="B07RQ8TP9Q">
+          <input type="hidden" name="items[0.base][offerListingId]" value="lvcrlvlZubfLiBhbD74IjGukWYtODH6YWLsbRNAi1FSWb7CXLDkBqLDTVLIhnvXUYz0CPXWEzbJ1VqXBP5li%2BNSWAr4mHnINpz8XY9nCCi46851vTa4USDh2whgA1HsLysobvM9kH7s%3D"> <input type="hidden" name="items[0.base][quantity]" value="1"> <input type="hidden" name="clientName" value="Aplus_BuyableModules_DetailPage">
+          <div class="add-to-cart">
+            <span class="a-button a-spacing-small a-button-primary a-button-icon" id="a-autoid-25">
+              <span class="a-button-inner">
+                <i class="a-icon a-icon-cart"></i>
+                <input class="a-button-input" type="submit" aria-labelledby="a-autoid-25-announce">
+                <span class="a-button-text" aria-hidden="true" id="a-autoid-25-announce"> Ajouter au panier </span>
+              </span>
+            </span>
+          </div>
+        </form>
       </div>`;
-      const expectedHtml = `<div> <div> <h1>Hello, World!</h1> <p>Welcome to the test.</p> <img src="image.jpg" width="100" height="200"/> <img src="image2.jpg"/> <br/> </div> </div>`;
+      const expectedHtml = `<div> <div> <h1>Hello, World!</h1> <p>Welcome to the test.</p> <img src="image.jpg" width="100" height="200"> <img src="image2.jpg"> <br> </div> <form method="post" action="/cart/add-to-cart/ref=emc_s_m_5_i_atc_c"> <div> <span id="a-autoid-25"> <span> <span aria-hidden="true" id="a-autoid-25-announce"> Ajouter au panier </span> </span> </span> </div> </form> </div>`;
       expect(optimizeHtml(inputHtml).trim()).toBe(expectedHtml.trim());
     });
 
@@ -437,10 +456,10 @@ describe('ExploreService', () => {
     });
 
     it('should handle unclosed tags and return well-formed HTML', () => {
-      const inputHtml = `<p><div>Content <span class="a-text-bold">Bold Text`;
+      const inputHtml = `<div><p>Content <span class="a-text-bold">Bold Text`;
       const result = optimizeHtml(inputHtml);
       expect(result).toContain(
-        '<p><div>Content <strong>Bold Text</strong></div></p>',
+        '<div><p>Content <strong>Bold Text</strong></p></div>',
       );
       expect(result).not.toContain('<span');
     });
@@ -555,6 +574,257 @@ describe('ExploreService', () => {
       const result = getFirstValidElement($, '.non-existent', 'text');
       expect(result).toBeNull();
       expect(mockCheerioAPI.eq).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('extractCSSAndHTML', () => {
+    it('should extract CSS styles and return cleaned HTML', () => {
+      const inputHTML = `
+        <h2>Title</h2>
+        <div class="container">
+            <style>.container { color: red; }</style>
+            <style>p { font-size: 16px; }</style>
+            <p>Hello, World!</p>
+        </div>`;
+
+      const expectedCSS = [
+        '.container { color: red; }',
+        'p { font-size: 16px; }',
+      ];
+      const expectedHTML =
+        `<h2>Title</h2> <div class="container"> <p>Hello, World!</p> </div>`.trim();
+
+      const result = exploreService.extractCSSAndHTML(inputHTML);
+
+      expect(result.css).toEqual(expectedCSS);
+      expect(result.html).toBe(expectedHTML);
+    });
+
+    it('should return an empty CSS array if no styles are present', () => {
+      const inputHTML = `<div><p>No styles here</p></div>`;
+      const result = exploreService.extractCSSAndHTML(inputHTML);
+
+      expect(result.css).toEqual([]);
+      expect(result.html).toBe(`<div><p>No styles here</p></div>`);
+    });
+
+    it('should handle an empty string input', () => {
+      const result = exploreService.extractCSSAndHTML('');
+
+      expect(result.css).toEqual([]);
+      expect(result.html).toBe('');
+    });
+  });
+
+  describe('removeScriptsAndComments', () => {
+    it('should remove input hidden', () => {
+      const html = `
+        <div class="apm-tablemodule">
+    <table class="apm-tablemodule-table" cellspacing="0" cellpadding="0">
+        <tbody>
+            <tr class="apm-tablemodule-imagerows">
+                <td class="apm-tablemodule-blankkeyhead">
+                </td>
+                <th>
+                    <a href="/dp/B07X3SV77H?ref=emc_s_m_5_i_atc">
+                        <div class="apm-tablemodule-image">
+                            <img alt=""
+                                src="/images/bb0c349a-745c-4873-84bb-e16caf0a6f75.__CR750,0,1500,3000_PT0_SX150_V1___.png"
+                                width="121.66666666666667px">
+                        </div>
+                        <div>
+                            Aberlour 10 ans </div>
+                    </a>
+                </th>
+                <th>
+                    <a href="/dp/B00LDNC01U?ref=emc_s_m_5_i_atc">
+                        <div class="apm-tablemodule-image">
+                            <img alt=""
+                                src="/images/addfa177-da9f-477d-9aaa-cb60a4a9e9b2.__CR750,0,1500,3000_PT0_SX150_V1___.png"
+                                width="121.66666666666667px">
+                        </div>
+                        <div>
+                            Aberlour White Oak </div>
+                    </a>
+                </th>
+
+            </tr>
+            <tr class="NO_apm-tablemodule-atc">
+                <td class="apm-tablemodule-blankkeyhead">
+
+                </td>
+                <td>
+                    <div class="add-to-cart ">
+                        <span class="a-button a-button-base" id="a-autoid-20"><span class="a-button-inner"><a
+                                    href="/dp/B07X3SV77H?ref=emc_s_m_5_i_atc" class="a-button-text"
+                                    id="a-autoid-20-announce"> Options d’achat </a></span></span>
+                    </div>
+                    <script type="application/javascript">
+                        logShoppableMetrics("module-5", false)
+                    </script>
+                </td>
+
+                <td>
+                    <form method="post" action="/cart/add-to-cart/ref=emc_s_m_5_i_atc_c"> <!-- sp:csrf --><input
+                            type="hidden" name="anti-csrftoken-a2z"
+                            value="hBd2fhPGuy1/GGbjrF3tOOVyIXUAdPUDTj4d8s+90aXLAAAAAGfAdcBhYjA5NzNkYi04YzQ4LTRkOGMtOWFiZS01NDEyYjE1ZDYzY2E="><!-- sp:end-csrf -->
+                        <input type="hidden" name="items[0.base][asin]" value="B01N5K7UCI"> <input type="hidden"
+                            name="items[0.base][offerListingId]"
+                            value="%2B602rq3SaZgjMxk8Y0sF%2B4Z1worktG%2Bd4bM7YkiLbs56G5HhvrFIrg4LgSA%2FB60bQlsXYft7b8KMMwd3O8%2BlXSq9ZCTqhfv1trcfESwc7N37dtGjMm1jv5mHSqfimDPL0%2BaBBBP8jxA%3D">
+                        <input type="hidden" name="items[0.base][quantity]" value="1"> <input type="hidden"
+                            name="clientName" value="Aplus_BuyableModules_DetailPage">
+                        <div class="add-to-cart">
+                            <span class="a-button a-spacing-small a-button-primary a-button-icon" id="a-autoid-25"><span
+                                    class="a-button-inner"><i class="a-icon a-icon-cart"></i><input
+                                        class="a-button-input" type="submit"
+                                        aria-labelledby="a-autoid-25-announce"><span class="a-button-text"
+                                        aria-hidden="true" id="a-autoid-25-announce"> Ajouter au panier
+                                    </span></span></span>
+                        </div>
+                    </form>
+                    <script type="application/javascript">
+                        logShoppableMetrics("module-5", true)
+                    </script>
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+</div>`;
+
+      const expected = `<div class="apm-tablemodule">
+    <table class="apm-tablemodule-table" cellspacing="0" cellpadding="0">
+        <tbody>
+            <tr class="apm-tablemodule-imagerows">
+                <td class="apm-tablemodule-blankkeyhead">
+                </td>
+                <th>
+                    <a href="/dp/B07X3SV77H">
+                        <div class="apm-tablemodule-image">
+                            <img alt=""
+                                src="/images/bb0c349a-745c-4873-84bb-e16caf0a6f75.__CR750,0,1500,3000_PT0_SX150_V1___.png"
+                                width="121.66666666666667px">
+                        </div>
+                        <div>
+                            Aberlour 10 ans </div>
+                    </a>
+                </th>
+                <th>
+                    <a href="/dp/B00LDNC01U">
+                        <div class="apm-tablemodule-image">
+                            <img alt=""
+                                src="/images/addfa177-da9f-477d-9aaa-cb60a4a9e9b2.__CR750,0,1500,3000_PT0_SX150_V1___.png"
+                                width="121.66666666666667px">
+                        </div>
+                        <div>
+                            Aberlour White Oak </div>
+                    </a>
+                </th>
+
+            </tr>
+            <tr class="NO_apm-tablemodule-atc">
+                <td class="apm-tablemodule-blankkeyhead">
+
+                </td>
+                <td>
+                    <div class="add-to-cart ">
+                        <span class="a-button a-button-base" id="a-autoid-20"><span class="a-button-inner"><a
+                                    href="/dp/B07X3SV77H" class="a-button-text"
+                                    id="a-autoid-20-announce"> Options d’achat </a></span></span>
+                    </div>
+                </td>
+
+                <td>
+                    <form method="post" action="/cart/add-to-cart/ref=emc_s_m_5_i_atc_c">
+                        <div class="add-to-cart">
+                            <span class="a-button a-spacing-small a-button-primary a-button-icon" id="a-autoid-25"><span
+                                    class="a-button-inner"><i class="a-icon a-icon-cart"></i><input
+                                        class="a-button-input" type="submit"
+                                        aria-labelledby="a-autoid-25-announce"><span class="a-button-text"
+                                        aria-hidden="true" id="a-autoid-25-announce"> Ajouter au panier
+                                    </span></span></span>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+</div>`;
+
+      const result = exploreService.removeScriptsAndComments(html);
+
+      expect(result).toBe(expected.replace(/\s+/g, ' ').trim());
+    });
+
+    it('should remove apm-tablemodule-atc class', () => {
+      const html = `
+        <div class="apm-tablemodule">
+          <table class="apm-tablemodule-table" cellspacing="0" cellpadding="0">
+            <tbody>
+              <tr class="apm-tablemodule-imagerows">
+                  <td class="apm-tablemodule-blankkeyhead"> </td>
+                  <th>
+                    <a href="/dp/B008U7SV7E?ref=emc_s_m_5_i_atc">
+                        <div class="apm-tablemodule-image"> <img alt=""
+                                src="/images/9a5f044f-3ea2-4a22-a2ef-86e0b554ee04.__CR0,0,600,1200_PT0_SX150_V1___.jpg"
+                                width="121.66666666666667px"></div>
+                        <div> Signet Whisky </div>
+                    </a>
+                  </th>
+              </tr>
+              <tr class="apm-tablemodule-atc">
+                  <td class="apm-tablemodule-blankkeyhead">
+
+                  </td>
+                  <td>
+                      <div class="add-to-cart ">
+                          <span class="a-button a-button-base" id="a-autoid-20"><span class="a-button-inner"><a
+                                      href="/dp/B07X3SV77H?ref=emc_s_m_5_i_atc&test=1" class="a-button-text"
+                                      id="a-autoid-20-announce"> Options d’achat </a></span></span>
+                      </div>
+                  </td>
+                  <td>
+                      <div class="add-to-cart"> <span class="a-button a-button-base"
+                              id="a-autoid-24"><span class="a-button-inner"><a
+                                      href="/dp/B00MUV6VD2?ref=emc_s_m_5_i_atc" class="a-button-text"
+                                      id="a-autoid-24-announce"> Options d’achat </a></span></span> </div>
+                  </td>
+                  <td>
+                      <div class="add-to-cart">
+                        <span class="a-button a-spacing-small a-button-primary a-button-icon" id="a-autoid-25">
+                          <span class="a-button-inner">
+                            <i class="a-icon a-icon-cart" />
+                            <input class="a-button-input" type="submit" aria-labelledby="a-autoid-25-announce">
+                              <span class="a-button-text" aria-hidden="true" id="a-autoid-25-announce"> Ajouter au panier </span>
+                            </input>
+                          </span>
+                        </span>
+                      </div>
+                  </td>
+                </tr></tbody></table></div>`;
+
+      const expected = `
+        <div class="apm-tablemodule">
+          <table class="apm-tablemodule-table" cellspacing="0" cellpadding="0">
+            <tbody>
+              <tr class="apm-tablemodule-imagerows">
+                  <td class="apm-tablemodule-blankkeyhead"> </td>
+                  <th>
+                    <a href="/dp/B008U7SV7E">
+                        <div class="apm-tablemodule-image"> <img alt=""
+                                src="/images/9a5f044f-3ea2-4a22-a2ef-86e0b554ee04.__CR0,0,600,1200_PT0_SX150_V1___.jpg"
+                                width="121.66666666666667px"></div>
+                        <div> Signet Whisky </div>
+                    </a>
+                  </th>
+              </tr>
+            </tbody></table></div>
+      `;
+
+      const result = exploreService.removeScriptsAndComments(html);
+
+      expect(result).toBe(expected.replace(/\s+/g, ' ').trim());
     });
   });
 });

@@ -10,6 +10,7 @@ import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 
 import { AlcoholService } from '../alcohol/alcohol.service';
+import { CompressService } from '../compress/compress.service';
 import { PriceItem } from '../alcohol/entities/price.entity';
 import { FamilyLink } from '../alcohol/entities/family-link.entity';
 import { CreateAlcoholInput } from '../alcohol/entities/create-alcohol-input.entity';
@@ -53,6 +54,7 @@ export class ExploreService implements OnModuleInit {
     private readonly utilsService: UtilsService,
     private readonly jsonService: JsonService,
     private readonly alcoholService: AlcoholService,
+    private readonly compressService: CompressService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
@@ -200,11 +202,7 @@ export class ExploreService implements OnModuleInit {
       });
 
       this.coloredLog(ELogColor.FgCyan, `3 minutes left to wait...`);
-      await this.utilsService.waitSeconds(1 * 60 * 1000);
-      this.coloredLog(ELogColor.FgCyan, `2 minutes left to wait...`);
-      await this.utilsService.waitSeconds(1 * 60 * 1000);
-      this.coloredLog(ELogColor.FgCyan, `1 minute left to wait...`);
-      await this.utilsService.waitSeconds(1 * 60 * 1000);
+      await this.utilsService.waitSeconds(3 * 60 * 1000);
 
       // break;
     }
@@ -400,15 +398,24 @@ export class ExploreService implements OnModuleInit {
             return;
           }
 
-          const nweBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›Whiskys`;
+          const newBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›Whiskys`;
           const replaceBreadcrumbs = await confirm({
-            message: `Do you want to replace breadcrumbs with '${nweBreadStr}'`,
+            message: `Do you want to replace breadcrumbs with '${newBreadStr}'`,
           });
           if (replaceBreadcrumbs) {
-            breadStr = nweBreadStr;
+            breadStr = newBreadStr.toLowerCase();
           }
         }
         const breadcrumbs = breadStr.split('›').map((bread) => bread.trim());
+
+        if (breadcrumbs[0] !== 'epicerie') {
+          this.coloredLog(ELogColor.FgRed, `breadcrumbs[0] !== 'epicerie'`);
+          this.stopExploration(true);
+          return;
+        }
+
+        // Shift (remove) the first element
+        breadcrumbs.shift();
         console.log('breadcrumbs:', breadcrumbs);
 
         /* ********************************************************************************* */
@@ -719,6 +726,66 @@ export class ExploreService implements OnModuleInit {
           return;
         }
 
+        /* ******************************* */
+
+        if ($('#dp #aplus').length > 1) {
+          this.coloredLog(ELogColor.FgRed, `Several #aplus detected!`);
+          this.stopExploration(true);
+          return;
+        }
+
+        const extractedCSSAndHTML = this.extractCSSAndHTML(
+          $('#dp #aplus').html(),
+        );
+
+        const cleanDescHTML = this.removeScriptsAndComments(
+          extractedCSSAndHTML.html,
+        );
+
+        if (!cleanDescHTML) {
+          this.coloredLog(ELogColor.FgRed, `HTML extraction empty!`);
+          this.stopExploration(true);
+          return;
+        }
+
+        const cocktail = cleanDescHTML.includes('cocktail');
+        if (cocktail) {
+          this.coloredLog(ELogColor.FgYellow, 'Speak about cocktail!');
+        }
+
+        const descriptionCompressed =
+          await this.compressService.compress(cleanDescHTML);
+
+        // Check if decompression works
+        const descriptionDecompressed = await this.compressService.decompress(
+          descriptionCompressed,
+        );
+        if (descriptionDecompressed !== cleanDescHTML) {
+          this.coloredLog(ELogColor.FgRed, `Compression problem!`);
+          this.stopExploration(true);
+          return;
+        }
+
+        const descDecompressedText = cheerio
+          .load(descriptionDecompressed)
+          .text();
+
+        console.log(
+          this.coloredText(
+            ELogColor.FgGreen,
+            'manufacturerDescription decompressed text:',
+          ),
+          descDecompressedText,
+        );
+
+        if (!descDecompressedText) {
+          this.coloredLog(ELogColor.FgRed, `Uncompressed text empty!`);
+          this.stopExploration(true);
+          return;
+        }
+
+        /* ******************************* */
+
         const finalAlcohol: CreateAlcoholInput = {
           asin: this.extractASIN(canonicalLink),
           // canonicalLink,
@@ -737,6 +804,7 @@ export class ExploreService implements OnModuleInit {
           description: {
             product: productDescription,
             images: imagesDescription,
+            manufacturer: descriptionCompressed,
           },
           familyLinks,
           shortlink,
@@ -744,6 +812,10 @@ export class ExploreService implements OnModuleInit {
           langCode: this.langCountryCode,
           newerVersion,
         };
+
+        if (cocktail) {
+          finalAlcohol.description.cocktail = true;
+        }
 
         return finalAlcohol;
       }
@@ -1023,7 +1095,7 @@ export class ExploreService implements OnModuleInit {
       return null;
     }
 
-    let $ = cheerio.load(html, { xml: true }, false);
+    let $ = cheerio.load(html, { xml: false }, false);
 
     // Supprimer les balises inutiles
     $(
@@ -1071,7 +1143,7 @@ export class ExploreService implements OnModuleInit {
     let htmlContent = $.html().replace(/\s+/g, ' ').trim();
 
     // Remplacer les balises mal fermées </br> par un remplacement propre
-    htmlContent = htmlContent.replace(/<\/br>/g, '');
+    // htmlContent = htmlContent.replace(/<\/br>/g, '');
 
     // Décoder les entités HTML pour garder les caractères spéciaux sous leur forme réelle
     htmlContent = decode(htmlContent);
@@ -1096,6 +1168,102 @@ export class ExploreService implements OnModuleInit {
       .remove();
 
     return $;
+  }
+
+  public removeScriptsAndComments(html: string): string {
+    if (!html) {
+      return null;
+    }
+
+    let $ = cheerio.load(html, { xml: false }, false);
+
+    $(
+      'hr, script, iframe, base, link[rel="stylesheet"], input[type="hidden"], .apm-tablemodule-atc',
+    ).remove();
+
+    // Supprimer les commentaires
+    $ = this.removeHtmlComments($);
+
+    $ = this.clearHrefQueryString($);
+
+    // Sélectionner et supprimer tous les éléments ayant `display: none`
+    $('[style]').each((_, el) => {
+      const style = $(el).attr('style') || '';
+      if (/display\s*:\s*none/i.test(style)) {
+        $(el).remove();
+      }
+    });
+
+    // $('span.a-text-bold').each(function () {
+    //   $(this).replaceWith(`<strong>${$(this).html()}</strong>`);
+    // });
+
+    // Sélectionner tous les éléments ayant un attribut commençant par "data-" sauf "data-src" et "data-a-dynamic-image"
+    $.root()
+      .find('*')
+      .each((_, element) => {
+        const el = $(element);
+        Object.keys(el.attr() || {}).forEach((attr) => {
+          if (attr.startsWith('data-')) {
+            if (attr !== 'data-src' && attr !== 'data-a-dynamic-image') {
+              el.removeAttr(attr);
+            }
+          }
+        });
+      });
+
+    // Nettoyer les attributs inutiles
+    $('[onclick], [onmouseover], [cel_widget_id]').removeAttr(
+      'onclick onmouseover cel_widget_id',
+    );
+
+    let htmlContent = $.html().replace(/\s+/g, ' ').trim();
+
+    // Remplacer les balises mal fermées </br> par un remplacement propre
+    // htmlContent = htmlContent.replace(/<\/br>/g, '');
+
+    // Décoder les entités HTML pour garder les caractères spéciaux sous leur forme réelle
+    htmlContent = decode(htmlContent);
+
+    return htmlContent;
+  }
+
+  public clearHrefQueryString($: cheerio.CheerioAPI): cheerio.CheerioAPI {
+    $('a[href]').each((index, element) => {
+      const $element = $(element);
+      const href = $element.attr('href');
+      if (href) {
+        const indexQuestionMark = href.indexOf('?');
+        if (indexQuestionMark !== -1) {
+          $element.attr('href', href.substring(0, indexQuestionMark));
+        }
+      }
+    });
+    return $;
+  }
+
+  /**
+   * Extracts CSS styles and cleans the HTML by removing <style> tags.
+   *
+   * @param {string} htmlString - The HTML string containing embedded styles.
+   * @returns {{ css: string[], html: string }} - An object containing an array of CSS rules and the cleaned HTML.
+   */
+  public extractCSSAndHTML(htmlString: string): {
+    css: string[];
+    html: string;
+  } {
+    const $ = cheerio.load(htmlString);
+
+    const cssArray: string[] = [];
+
+    $('style').each((_, element) => {
+      cssArray.push($(element).html()?.trim() ?? '');
+      $(element).remove();
+    });
+
+    const cleanedHTML = $('body').html()?.replace(/\s+/g, ' ')?.trim() || '';
+
+    return { css: cssArray, html: cleanedHTML };
   }
 
   /**
