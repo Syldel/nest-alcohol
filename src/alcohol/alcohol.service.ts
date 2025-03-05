@@ -118,6 +118,7 @@ export class AlcoholService extends BaseService {
         console.log(
           '\x1b[31m',
           `> ${Object.values(err.constraints || {}).join(', ')}`,
+          '\x1b[0m',
         ),
       );
       throw new BadRequestException(errors);
