@@ -40,7 +40,9 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Use GraphQL
+## GraphQL
+
+<img src="https://graphql.org/_next/static/media/logo.ad338028.svg" alt="GraphQL Logo" width="100" />
 
 In playground :
 ```gql
@@ -133,6 +135,8 @@ curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"$QUERY\"}" ht
 
 ## Gzip compression
 
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Gzip-Logo.svg/220px-Gzip-Logo.svg.png" alt="Gzip Logo" width="100" />
+
 Compression
 ```sh
 curl -X POST http://localhost:3000/compress/compress -H "Content-Type: application/json" -d "{ \"data\": \"Hello, this is a test string\" }"
@@ -153,6 +157,118 @@ JSON response :
 {"decompressed":"Hello, this is a test string"}
 ```
 
+## Hugging Face
+
+<img src="https://huggingface.co/datasets/huggingface/brand-assets/resolve/main/hf-logo.svg" alt="Hugging Face Logo" width="100" />
+
+### Sentiment
+
+With distilbert:
+```sh
+curl -X POST http://localhost:3000/huggingface/sentiment/distilbert -H "Content-Type: application/json" -d "{\"text\": \"Je suis très déçu par ce produit.\"}"
+```
+
+JSON response :
+```json
+[[{"label":"NEGATIVE","score":0.9456522464752197},{"label":"POSITIVE","score":0.05434773117303848}]]
+```
+
+With roberta:
+```sh
+curl -X POST http://localhost:3000/huggingface/sentiment/roberta -H "Content-Type: application/json" -d "{\"text\": \"Je suis très déçu par ce produit.\"}"
+```
+
+JSON response :
+```json
+[[{"label":"negative","score":0.9621295928955078},{"label":"positive","score":0.019233308732509613},{"label":"neutral","score":0.018637124449014664}]]
+```
+
+### NER (Named Entity Recognition)
+
+With camembert:
+```sh
+curl -X POST http://localhost:3000/huggingface/ner/camembert -H "Content-Type: application/json" -d "{\"text\": \"Barack Obama was born in Hawaii and was the president of the United States.\"}"
+```
+
+JSON response :
+```json
+{"PER":["Barack Obama"],"LOC":["Hawaii","United States"]}
+```
+
+### MISTRAL
+
+```sh
+curl -X POST http://localhost:3000/huggingface/mistral -H "Content-Type: application/json" -d "{\"text\": \"Translate from English to French in one word: computer.\"}"
+```
+
+JSON response :
+```json
+[
+  {
+    "generated_text": "answer..."
+  }
+]
+```
+
+## Mongosh - Accédez et Gérez Votre Base de Données MongoDB
+
+<img src="https://upload.wikimedia.org/wikipedia/en/5/5a/MongoDB_Fores-Green.svg" alt="MongoDB Logo" width="200" />
+
+### Présentation
+
+Mongosh (version 2.4.0) est l'interface en ligne de commande moderne pour interagir avec MongoDB. Elle vous permet de vous connecter à votre base de données, de manipuler vos données et de configurer votre instance MongoDB.
+
+**Important :** La version 2.0.0 ou supérieure de Mongosh est requise pour fonctionner avec Atlas Stream Processing.
+
+### Installation et Utilisation
+
+1.  **Installation de Mongosh :**
+    * Assurez-vous d'avoir Mongosh installé sur votre système. Vous pouvez le télécharger depuis le site officiel de MongoDB : [https://www.mongodb.com/try/download/shell](https://www.mongodb.com/try/download/shell)
+
+2.  **Connexion à votre base de données :**
+    * Utilisez la chaîne de connexion suivante dans votre ligne de commande pour vous connecter à votre cluster MongoDB Atlas :
+
+    ```bash
+    mongosh "mongodb+srv://cluster0.vvg4u.gcp.mongodb.net/" --apiVersion 1 --username <db_username>
+    ```
+
+    * Remplacez `<db_username>` par le nom d'utilisateur de votre base de données.
+
+3.  **Saisie du mot de passe :**
+    * Vous serez invité à saisir le mot de passe de l'utilisateur de la base de données.
+    * **Attention :** Assurez-vous que tous les caractères spéciaux de votre mot de passe sont encodés en URL. Par exemple, remplacez `@` par `%40`, `#` par `%23`, etc.
+
+### Exemple d'utilisation
+
+Une fois connecté, vous pouvez exécuter des commandes MongoDB directement dans Mongosh. Par exemple :
+
+* Afficher les bases de données :
+
+    ```javascript
+    show dbs
+    ```
+
+* Utiliser une base de données spécifique :
+
+    ```javascript
+    use ma_base_de_donnees
+    ```
+
+* Trouver des documents dans une collection :
+
+    ```javascript
+    db.ma_collection.find()
+    ```
+
+### Atlas Stream Processing
+
+Pour utiliser Mongosh avec Atlas Stream Processing, assurez-vous d'utiliser Mongosh version 2.0.0 ou supérieure.
+
+### Liens utiles
+
+* Télécharger Mongosh : [https://www.mongodb.com/try/download/shell](https://www.mongodb.com/try/download/shell)
+* Documentation MongoDB : [https://docs.mongodb.com/](https://docs.mongodb.com/)
+* Documentation Mongosh : [https://www.mongodb.com/docs/mongodb-shell/](https://www.mongodb.com/docs/mongodb-shell/)
 
 ## Deployment
 
