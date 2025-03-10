@@ -528,4 +528,307 @@ describe('UtilsService', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('removeAccents', () => {
+    it('should remove accents from common French words', () => {
+      expect(utilsService.removeAccents("Éléphant à l'école")).toBe(
+        "Elephant a l'ecole",
+      );
+      expect(utilsService.removeAccents('Crème brûlée')).toBe('Creme brulee');
+    });
+
+    it('should handle uppercase and lowercase letters', () => {
+      expect(utilsService.removeAccents('ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝ')).toBe(
+        'AAAAAACEEEEIIIIOOOOOUUUUY',
+      );
+      expect(utilsService.removeAccents('àáâãäåçèéêëìíîïòóôõöùúûüýÿ')).toBe(
+        'aaaaaaceeeeiiiiooooouuuuyy',
+      );
+    });
+
+    it('should return the same string if there are no accents', () => {
+      expect(utilsService.removeAccents('Hello World')).toBe('Hello World');
+      expect(utilsService.removeAccents('12345!@#$%^&*()-_[]£§')).toBe(
+        '12345!@#$%^&*()-_[]£§',
+      );
+    });
+
+    it('should handle empty strings', () => {
+      expect(utilsService.removeAccents('')).toBe('');
+    });
+
+    it('should handle strings with only accents', () => {
+      expect(utilsService.removeAccents('éèêë')).toBe('eeee');
+      expect(utilsService.removeAccents('çôùï')).toBe('coui');
+    });
+  });
+
+  describe('pick', () => {
+    it('should extract simple properties', () => {
+      const obj = { a: 1, b: 2, c: 3 };
+      const keys = ['a', 'c'];
+      const result = utilsService.pick(obj, keys);
+      expect(result).toEqual({ a: 1, c: 3 });
+    });
+
+    it('should extract nested properties', () => {
+      const obj = {
+        nested: {
+          x: 10,
+          y: {
+            z: 20,
+          },
+        },
+        other: 30,
+      };
+      const keys = ['nested.x', 'nested.y.z', 'other'];
+      const result = utilsService.pick(obj, keys);
+      expect(result).toEqual({
+        nested: { x: 10, y: { z: 20 } },
+        other: 30,
+      });
+    });
+
+    it('should handle missing properties', () => {
+      const obj = { a: 1, b: 2 };
+      const keys = ['a', 'c', 'd.e'];
+      const result = utilsService.pick(obj, keys);
+      expect(result).toEqual({ a: 1 });
+    });
+
+    it('should handle empty keys array', () => {
+      const obj = { a: 1, b: 2 };
+      const keys: string[] = [];
+      const result = utilsService.pick(obj, keys);
+      expect(result).toEqual({});
+    });
+
+    it('should handle objects in array in nested keys', () => {
+      const obj = {
+        items: [
+          { name: 'item1', regions: { en: 'Sweden', fr: 'Suède' } },
+          { name: 'item2', regions: { en: 'Japan', fr: 'Japon' } },
+        ],
+      };
+      const keys = ['items.name', 'items.regions.fr'];
+      const result = utilsService.pick(obj, keys);
+
+      expect(result).toEqual({
+        items: [
+          { name: 'item1', regions: { fr: 'Suède' } },
+          { name: 'item2', regions: { fr: 'Japon' } },
+        ],
+      });
+    });
+
+    it('should handle objects in array in nested keys - several subkeys', () => {
+      const obj = {
+        names: {
+          en: 'Countries',
+          fr: 'Pays',
+          ar: '???',
+          de: '????',
+          es: '?????',
+        },
+        items: [
+          {
+            name: 'item1',
+            regions: {
+              en: 'Sweden',
+              fr: 'Suède',
+              ar: 'السويد',
+              de: 'Schweden',
+              es: 'Suecia',
+            },
+          },
+          {
+            name: 'item2',
+            regions: {
+              en: 'Japan',
+              fr: 'Japon',
+              ar: 'اليابان',
+              de: 'Japan',
+              es: 'Japón',
+            },
+          },
+        ],
+      };
+      const keys = [
+        'names.fr',
+        'names.en',
+        'items.name',
+        'items.regions.fr',
+        'items.regions.en',
+      ];
+      const result = utilsService.pick(obj, keys);
+
+      expect(result).toEqual({
+        names: { en: 'Countries', fr: 'Pays' },
+        items: [
+          { name: 'item1', regions: { en: 'Sweden', fr: 'Suède' } },
+          { name: 'item2', regions: { en: 'Japan', fr: 'Japon' } },
+        ],
+      });
+    });
+
+    it('should handle a nested property that does not exist', () => {
+      const obj = {
+        nested: {
+          x: 10,
+        },
+      };
+      const keys = ['nested.y.z'];
+      const result = utilsService.pick(obj, keys);
+      expect(result).toEqual({ nested: {} });
+    });
+  });
+
+  describe('deepCloneJSON', () => {
+    it('should clone a simple object', () => {
+      const obj = { a: 1, b: 'test' };
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone).toEqual(obj);
+      expect(clone).not.toBe(obj);
+    });
+
+    it('should clone a nested object', () => {
+      const obj = { a: 1, b: { c: 2, d: 'test' } };
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone).toEqual(obj);
+      expect(clone.b).not.toBe(obj.b);
+    });
+
+    it('should clone an array', () => {
+      const obj = [1, 'test', { a: 1 }];
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone).toEqual(obj);
+      expect(clone[2]).not.toBe(obj[2]);
+    });
+
+    it('should clone a complex object', () => {
+      const obj = {
+        a: 1,
+        b: 'test',
+        c: [1, 2, { d: 3 }],
+        e: { f: 'test', g: [4, 5] },
+      };
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone).toEqual(obj);
+      expect(clone.c).not.toBe(obj.c);
+      expect(clone.e).not.toBe(obj.e);
+    });
+
+    it('should handle null and undefined', () => {
+      expect(utilsService.deepCloneJSON(null)).toBeNull();
+      expect(utilsService.deepCloneJSON(undefined)).toBeUndefined();
+    });
+
+    it('should throw an error for circular references', () => {
+      const obj: any = { a: 1 };
+      obj.b = obj;
+      expect(() => utilsService.deepCloneJSON(obj)).toThrow();
+    });
+
+    it('should not clone functions', () => {
+      const obj = { a: 1, b: () => {} };
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone.b).toBeUndefined();
+    });
+
+    it('should not clone dates', () => {
+      const obj = { a: 1, b: new Date() };
+      const clone = utilsService.deepCloneJSON(obj);
+      expect(clone.b).toBeDefined();
+      expect(clone.b instanceof Date).toBeFalsy();
+    });
+  });
+
+  describe('isObject', () => {
+    it('should return true for a plain object', () => {
+      expect(utilsService.isObject({})).toBe(true);
+      expect(utilsService.isObject({ a: 1 })).toBe(true);
+    });
+
+    it('should return false for null', () => {
+      expect(utilsService.isObject(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(utilsService.isObject(undefined)).toBe(false);
+    });
+
+    it('should return false for an array', () => {
+      expect(utilsService.isObject([])).toBe(false);
+      expect(utilsService.isObject([1, 2, 3])).toBe(false);
+    });
+
+    it('should return false for a string', () => {
+      expect(utilsService.isObject('test')).toBe(false);
+    });
+
+    it('should return false for a number', () => {
+      expect(utilsService.isObject(123)).toBe(false);
+    });
+
+    it('should return false for a boolean', () => {
+      expect(utilsService.isObject(true)).toBe(false);
+      expect(utilsService.isObject(false)).toBe(false);
+    });
+
+    it('should return false for a function', () => {
+      expect(utilsService.isObject(() => {})).toBe(false);
+    });
+  });
+
+  describe('deepMerge', () => {
+    it('should deepMerge two simple objects', () => {
+      const target = { a: 1, b: 2 };
+      const source = { b: 3, c: 4 };
+      const result = utilsService.deepMerge({}, target, source);
+      expect(result).toEqual({ a: 1, b: 3, c: 4 });
+    });
+
+    it('should deepMerge nested objects', () => {
+      const target = { a: 1, b: { c: 2 } };
+      const source = { b: { d: 3 } };
+      const result = utilsService.deepMerge({}, target, source);
+      expect(result).toEqual({ a: 1, b: { c: 2, d: 3 } });
+    });
+
+    it('should deepMerge arrays', () => {
+      const target = { a: [1, 2] };
+      const source = { a: [3, 4] };
+      const result = utilsService.deepMerge({}, target, source);
+      expect(result).toEqual({ a: [3, 4] });
+    });
+
+    it('should deepMerge objects with mixed types', () => {
+      const target = { a: 1, b: { c: 2 }, d: [1, 2] };
+      const source = { b: { d: 3 }, d: [3, 4], e: 'test' };
+      const result = utilsService.deepMerge({}, target, source);
+      expect(result).toEqual({ a: 1, b: { c: 2, d: 3 }, d: [3, 4], e: 'test' });
+    });
+
+    it('should handle multiple sources', () => {
+      const target = { a: 1 };
+      const source1 = { b: 2 };
+      const source2 = { c: 3 };
+      const result = utilsService.deepMerge({}, target, source1, source2);
+      expect(result).toEqual({ a: 1, b: 2, c: 3 });
+    });
+
+    it('should handle empty sources', () => {
+      const target = { a: 1 };
+      const result = utilsService.deepMerge({}, target);
+      expect(result).toEqual(target);
+    });
+
+    it('should handle null and undefined sources', () => {
+      const target = { a: 1 };
+      const result = utilsService.deepMerge({}, target, null, undefined, {
+        b: 2,
+      });
+      expect(result).toEqual({ a: 1, b: 2 });
+    });
+  });
 });
