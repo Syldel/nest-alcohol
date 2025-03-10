@@ -8,8 +8,9 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ExploreModule } from './services/explore.module';
-import { CompressController } from './compress/compress.controller';
 import { CompressModule } from './compress/compress.module';
+import { HuggingFaceModule } from './huggingface/huggingface.module';
+import { CountryModule } from './country/country.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -28,8 +29,10 @@ const isProduction = process.env.NODE_ENV === 'production';
     MongooseModule.forRoot(process.env.MONGO_URI),
     ExploreModule,
     CompressModule,
+    HuggingFaceModule,
+    CountryModule,
   ],
-  controllers: [AppController, CompressController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

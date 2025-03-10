@@ -210,6 +210,17 @@ JSON response :
 ]
 ```
 
+## Countries
+
+```sh
+curl -X POST http://localhost:3000/country/search -H "Content-Type: application/json" -d "{\"term\": \"Kentucky\", \"options\": {\"keepKeys\": [\"iso\", \"iso3\"] }}"
+```
+
+JSON response:
+```json
+[{"iso":"US","iso3":"USA"}]
+```
+
 ## Mongosh - Accédez et Gérez Votre Base de Données MongoDB
 
 <img src="https://upload.wikimedia.org/wikipedia/en/5/5a/MongoDB_Fores-Green.svg" alt="MongoDB Logo" width="200" />
