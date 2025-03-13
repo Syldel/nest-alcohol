@@ -230,6 +230,41 @@ export class UtilsService {
   }
 
   /**
+   * Merges duplicate objects in an array based on a key selector.
+   * If a merge function is provided, it will be used to merge objects with the same key.
+   * If not, a simple property merge is performed.
+   *
+   * @template T The type of the objects in the array.
+   * @param {T[]} array The input array of objects.
+   * @param {(item: T) => string} keySelector A function that extracts a unique key from each object.
+   * @param {(acc: T, current: T) => T} [mergeFunction] An optional function that merges two objects with the same key.
+   * @returns {T[]} An array of merged objects.
+   */
+  public mergeDuplicates<T>(
+    array: T[],
+    keySelector: (item: T) => string,
+    mergeFunction?: (acc: T, current: T) => T,
+  ): T[] {
+    const mergedMap = new Map<string, T>();
+
+    for (const item of array) {
+      const key = keySelector(item);
+      if (mergedMap.has(key)) {
+        if (mergeFunction) {
+          mergedMap.set(key, mergeFunction(mergedMap.get(key)!, item));
+        } else {
+          // If no merge function is provided, simply merge the properties.
+          mergedMap.set(key, { ...mergedMap.get(key)!, ...item });
+        }
+      } else {
+        mergedMap.set(key, item);
+      }
+    }
+
+    return Array.from(mergedMap.values());
+  }
+
+  /**
    * Removes accents from a given string.
    * Converts characters like "é" to "e" or "à" to "a".
    *

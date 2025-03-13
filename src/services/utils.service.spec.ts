@@ -529,6 +529,269 @@ describe('UtilsService', () => {
     });
   });
 
+  describe('mergeDuplicates', () => {
+    it('should merge objects with the same key', () => {
+      const array = [
+        { id: '1', value: 1 },
+        { id: '2', value: 2 },
+        { id: '1', value: 3 },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.id,
+        (acc, current) => ({ ...acc, value: acc.value + current.value }),
+      );
+
+      expect(mergedArray).toEqual([
+        { id: '1', value: 4 },
+        { id: '2', value: 2 },
+      ]);
+    });
+
+    it('should handle an empty array', () => {
+      const array: { id: string; value: number }[] = [];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.id,
+        (acc, current) => ({ ...acc, value: acc.value + current.value }),
+      );
+
+      expect(mergedArray).toEqual([]);
+    });
+
+    it('should handle an array with no duplicates', () => {
+      const array = [
+        { id: '1', value: 1 },
+        { id: '2', value: 2 },
+        { id: '3', value: 3 },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.id,
+        (acc, current) => ({ ...acc, value: acc.value + current.value }),
+      );
+
+      expect(mergedArray).toEqual(array);
+    });
+
+    it('should handle different merge functions', () => {
+      const array = [
+        { id: '1', name: 'John' },
+        { id: '2', name: 'Jane' },
+        { id: '1', name: 'Doe' },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.id,
+        (acc, current) => ({ ...acc, name: `${acc.name} ${current.name}` }),
+      );
+
+      expect(mergedArray).toEqual([
+        { id: '1', name: 'John Doe' },
+        { id: '2', name: 'Jane' },
+      ]);
+    });
+
+    it('should handle different key selectors', () => {
+      const array = [
+        { firstName: 'John', lastName: 'Doe' },
+        { firstName: 'Jane', lastName: 'Smith' },
+        { firstName: 'John', lastName: 'Smith' },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.firstName,
+        (acc, current) => ({
+          ...acc,
+          lastName: `${acc.lastName} ${current.lastName}`,
+        }),
+      );
+
+      expect(mergedArray).toEqual([
+        { firstName: 'John', lastName: 'Doe Smith' },
+        { firstName: 'Jane', lastName: 'Smith' },
+      ]);
+    });
+
+    it('should merge objects with nested properties', () => {
+      const array = [
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+        },
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+        },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.iso,
+        (acc, current) => ({ ...acc, ...current }),
+      );
+
+      expect(mergedArray).toEqual([
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+        },
+      ]);
+    });
+
+    it('should merge objects with different regions', () => {
+      const array = [
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [
+            {
+              name: 'Tennessee',
+              names: {
+                en: 'Tennessee',
+                fr: 'Tennessee',
+              },
+              iso: 'TN',
+              reference: {
+                geonames: 4662168,
+                openstreetmap: 161838,
+              },
+            },
+          ],
+        },
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+        },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.iso,
+        (acc, current) => {
+          const mergedRegions = current.regions
+            ? acc.regions
+              ? [...acc.regions, ...current.regions]
+              : current.regions
+            : acc.regions;
+
+          return { ...acc, ...current, regions: mergedRegions };
+        },
+      );
+
+      expect(mergedArray).toEqual([
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [
+            {
+              name: 'Tennessee',
+              names: {
+                en: 'Tennessee',
+                fr: 'Tennessee',
+              },
+              iso: 'TN',
+              reference: {
+                geonames: 4662168,
+                openstreetmap: 161838,
+              },
+            },
+            { names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' },
+          ],
+        },
+      ]);
+    });
+
+    it('should merge objects with partially duplicated regions', () => {
+      const array = [
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [
+            {
+              name: 'Tennessee',
+              names: {
+                en: 'Tennessee',
+                fr: 'Tennessee',
+              },
+              iso: 'TN',
+              reference: {
+                geonames: 4662168,
+                openstreetmap: 161838,
+              },
+            },
+          ],
+        },
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [
+            { names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' },
+            {
+              names: {
+                en: 'Tennessee',
+                fr: 'Tennessee',
+              },
+              iso: 'TN',
+            },
+          ],
+        },
+      ];
+
+      const mergedArray = utilsService.mergeDuplicates(
+        array,
+        (item) => item.iso,
+        (acc, current) => {
+          const mergedRegions = utilsService.mergeDuplicates(
+            [...(acc.regions ?? []), ...(current.regions ?? [])],
+            (item) => item.iso,
+          );
+
+          return { ...acc, ...current, regions: mergedRegions };
+        },
+      );
+
+      expect(mergedArray).toEqual([
+        {
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [
+            {
+              name: 'Tennessee',
+              names: {
+                en: 'Tennessee',
+                fr: 'Tennessee',
+              },
+              iso: 'TN',
+              reference: {
+                geonames: 4662168,
+                openstreetmap: 161838,
+              },
+            },
+            { names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' },
+          ],
+        },
+      ]);
+    });
+  });
+
   describe('removeAccents', () => {
     it('should remove accents from common French words', () => {
       expect(utilsService.removeAccents("Éléphant à l'école")).toBe(
