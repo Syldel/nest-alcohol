@@ -1,19 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { confirm } from '@clack/prompts';
 
-import { ExploreService } from './explore.service';
+import { ExploreService, IRegionCountry } from './explore.service';
 import { UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
+import { HuggingFaceService } from '../huggingface/huggingface.service';
+import { HttpClientService } from './http-client.service';
+import { CountryService, FilterOptions } from '../country/country.service';
+
+jest.mock('@clack/prompts', () => ({
+  confirm: jest.fn(),
+}));
 
 describe('ExploreService', () => {
   let app: TestingModule;
   let exploreService: ExploreService;
-  let mockAlcoholService: jest.Mocked<AlcoholService>;
+  let countryService: CountryService;
+  let huggingFaceService: HuggingFaceService;
+  let alcoholServiceMock: jest.Mocked<AlcoholService>;
 
   beforeAll(async () => {
-    mockAlcoholService = {
+    alcoholServiceMock = {
       findAll: jest.fn().mockReturnValue(['Mock Whiskey', 'Mock Vodka']),
       // findOne: jest.fn().mockImplementation((id: number) => `Mock Alcohol ${id}`),
       create: jest
@@ -27,17 +37,22 @@ describe('ExploreService', () => {
       providers: [
         {
           provide: AlcoholService,
-          useValue: mockAlcoholService,
+          useValue: alcoholServiceMock,
         },
         ConfigService,
         ExploreService,
         UtilsService,
         JsonService,
         CompressService,
+        HuggingFaceService,
+        HttpClientService,
+        CountryService,
       ],
     }).compile();
 
     exploreService = app.get<ExploreService>(ExploreService);
+    countryService = app.get<CountryService>(CountryService);
+    huggingFaceService = app.get<HuggingFaceService>(HuggingFaceService);
   });
 
   describe('extractASIN', () => {
@@ -825,6 +840,207 @@ describe('ExploreService', () => {
       const result = exploreService.removeScriptsAndComments(html);
 
       expect(result).toBe(expected.replace(/\s+/g, ' ').trim());
+    });
+  });
+
+  describe('extractCountry', () => {
+    let searchCountrySpy: jest.SpyInstance;
+    let huggingFaceAnalyzeSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      if (searchCountrySpy) searchCountrySpy.mockClear();
+      if (huggingFaceAnalyzeSpy) huggingFaceAnalyzeSpy.mockClear();
+    });
+
+    it('should extract country information when country detail is present', async () => {
+      searchCountrySpy = jest
+        .spyOn(countryService as any, 'searchCountriesOrRegions')
+        .mockReturnValueOnce([
+          {
+            iso: 'US',
+            iso3: 'USA',
+            names: { en: 'United States', fr: 'États-Unis' },
+            regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+          },
+        ]);
+
+      const details = [
+        { legend: "Pays d'origine", value: 'United States' },
+        { legend: 'Région de production', value: 'Kentucky' },
+      ];
+
+      const result = await exploreService['extractCountry'](
+        '',
+        details,
+        '',
+        '',
+      );
+
+      expect(searchCountrySpy).toHaveBeenCalledWith(
+        'United States Kentucky',
+        expect.any(Object),
+      );
+      expect(result).toEqual({
+        iso: 'US',
+        iso3: 'USA',
+        names: { en: 'United States', fr: 'États-Unis' },
+        regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+      });
+    });
+
+    it('should call hugging face service when no matching are found', async () => {
+      exploreService['countries'] = [
+        {
+          nationalities: ['irish', 'irlandais'],
+          whiskyDistilleries: ['Bushmills'],
+          country: {
+            en: 'Ireland',
+            fr: 'Irlande',
+          },
+        },
+      ];
+
+      searchCountrySpy = jest
+        .spyOn(countryService as any, 'searchCountriesOrRegions')
+        .mockReturnValueOnce([]);
+
+      const huggingFaceResult = [
+        {
+          generated_text:
+            'Here is the country information:\n```json\n{"names":{"en":"France","fr":"France"},"iso":"FR","iso3":"FRA"}\n```',
+        },
+      ];
+
+      huggingFaceAnalyzeSpy = jest
+        .spyOn(huggingFaceService as any, 'analyzeText')
+        .mockReturnValueOnce(huggingFaceResult);
+
+      (confirm as unknown as jest.Mock).mockResolvedValueOnce(true);
+
+      const result = await exploreService['extractCountry']('---', [], '', '');
+
+      expect(searchCountrySpy).toHaveBeenCalledWith('---', expect.any(Object));
+      expect(result).toEqual({
+        iso: 'FR',
+        iso3: 'FRA',
+        names: { en: 'France', fr: 'France' },
+      });
+    });
+  });
+
+  describe('findCountriesByRegionsInTitle', () => {
+    const regionCountryMappings: IRegionCountry[] = [
+      {
+        regions: ['highland', 'speyside'],
+        nationalities: ['scottish'],
+        whiskyDistilleries: ['glenlivet'],
+        country: {
+          en: 'Scotland',
+          fr: 'Écosse',
+        },
+      },
+      {
+        nationalities: ['irish', 'irlandais'],
+        whiskyDistilleries: ['Bushmills'],
+        country: {
+          en: 'Ireland',
+          fr: 'Irlande',
+        },
+      },
+    ];
+    const filterOptions: FilterOptions = { searchInText: true };
+
+    let searchCountrySpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      if (searchCountrySpy) searchCountrySpy.mockClear();
+      searchCountrySpy = jest
+        .spyOn(countryService as any, 'searchCountriesOrRegions')
+        .mockReturnValueOnce([
+          {
+            iso: 'GB',
+            iso3: 'GBR',
+            names: { en: 'United Kingdom', fr: 'Royaume-Uni' },
+            regions: [{ names: { en: 'Scotland', fr: 'Écosse' }, iso: 'SCT' }],
+          },
+        ]);
+    });
+
+    it('should return countries when a region match is found in the text', () => {
+      const text = 'This is a Highland whisky';
+
+      const result = exploreService['findCountriesByRegionsInTitle'](
+        text,
+        regionCountryMappings,
+        filterOptions,
+      );
+
+      expect(searchCountrySpy).toHaveBeenCalledWith('Scotland', filterOptions);
+      expect(result).toHaveLength(1);
+      expect(result[0].iso).toBe('GB');
+    });
+
+    it('should return countries when a nationality match is found in the text', () => {
+      const text = 'This is a Scottish whisky';
+
+      const result = exploreService['findCountriesByRegionsInTitle'](
+        text,
+        regionCountryMappings,
+        filterOptions,
+      );
+
+      expect(searchCountrySpy).toHaveBeenCalledWith('Scotland', filterOptions);
+      expect(result).toHaveLength(1);
+      expect(result[0].iso).toBe('GB');
+    });
+
+    it('should return countries when a distillery match is found in the text', () => {
+      const text = 'This is a Glenlivet whisky';
+
+      const result = exploreService['findCountriesByRegionsInTitle'](
+        text,
+        regionCountryMappings,
+        filterOptions,
+      );
+
+      expect(searchCountrySpy).toHaveBeenCalledWith('Scotland', filterOptions);
+      expect(result).toHaveLength(1);
+      expect(result[0].iso).toBe('GB');
+    });
+
+    it('should return countries when a distillery match and a nationality match (from another country) are found in the text', () => {
+      if (searchCountrySpy) searchCountrySpy.mockReset();
+
+      searchCountrySpy = jest
+        .spyOn(countryService as any, 'searchCountriesOrRegions')
+        .mockReturnValueOnce([
+          {
+            iso: 'GB',
+            iso3: 'GBR',
+            names: { en: 'United Kingdom', fr: 'Royaume-Uni' },
+            regions: [{ names: { en: 'Scotland', fr: 'Écosse' }, iso: 'SCT' }],
+          },
+        ])
+        .mockReturnValueOnce([
+          {
+            iso: 'IE',
+            iso3: 'IRL',
+            names: { en: 'Ireland', fr: 'Irlande' },
+          },
+        ]);
+
+      const text = 'This is a Scottish whisky from Bushmills';
+
+      const result = exploreService['findCountriesByRegionsInTitle'](
+        text,
+        regionCountryMappings,
+        filterOptions,
+      );
+
+      expect(searchCountrySpy).toHaveBeenCalledWith('Scotland', filterOptions);
+      expect(result).toHaveLength(2);
+      expect(result[0].iso).toBe('GB');
+      expect(result[1].iso).toBe('IE');
     });
   });
 });

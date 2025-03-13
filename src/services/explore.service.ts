@@ -4,19 +4,32 @@ import { ConfigService } from '@nestjs/config';
 import * as cheerio from 'cheerio';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { decode } from 'entities';
-import { confirm, select } from '@clack/prompts';
+import { cancel, confirm, isCancel, select, text } from '@clack/prompts';
 
 import { ELogColor, UtilsService } from './utils.service';
 import { JsonService } from './json.service';
 
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
+import {
+  EHFModel,
+  HuggingFaceService,
+} from '../huggingface/huggingface.service';
+import {
+  Country,
+  CountryService,
+  FilterOptions,
+} from '../country/country.service';
 import { PriceItem } from '../alcohol/entities/price.entity';
 import { FamilyLink } from '../alcohol/entities/family-link.entity';
 import { CreateAlcoholInput } from '../alcohol/entities/create-alcohol-input.entity';
 import { Alcohol } from '../alcohol/entities/alcohol.entity';
 import { Reviews } from '../alcohol/entities/reviews.entity';
 import { Details } from '../alcohol/entities/details.entity';
+import {
+  CountryInfo,
+  RegionInfo,
+} from '../alcohol/entities/country-info.entity';
 
 type Link = {
   asin?: string;
@@ -27,6 +40,17 @@ type Link = {
   addToExploration?: boolean;
 };
 
+export interface IRegionCountry {
+  regions?: string[];
+  nationalities: string[];
+  whiskyDistilleries: string[];
+  brands?: string[];
+  country: {
+    en: string;
+    fr: string;
+  };
+}
+
 @Injectable()
 export class ExploreService implements OnModuleInit {
   private links: Link[];
@@ -34,6 +58,8 @@ export class ExploreService implements OnModuleInit {
   private browser: Browser;
   private cheerioAPI: cheerio.CheerioAPI;
   private websiteExploreHost: string;
+  private countries: IRegionCountry[];
+  private jsonCountriesPath = `jsons/countries.json`;
 
   private targetKeyword = 'whisky';
   private langCountryCode = 'fr_FR';
@@ -55,6 +81,8 @@ export class ExploreService implements OnModuleInit {
     private readonly jsonService: JsonService,
     private readonly alcoholService: AlcoholService,
     private readonly compressService: CompressService,
+    private readonly huggingFaceService: HuggingFaceService,
+    private readonly countryService: CountryService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
@@ -87,7 +115,29 @@ export class ExploreService implements OnModuleInit {
       return;
     }
 
-    // Save links data in a json file
+    /* **************************************************************************** */
+
+    const countriesData = await this.jsonService.readJsonFile(
+      this.jsonCountriesPath,
+    );
+    if (
+      !countriesData ||
+      !countriesData.data ||
+      countriesData.data.length === 0
+    ) {
+      this.coloredLog(
+        ELogColor.FgRed,
+        `No country data found in: ${this.jsonCountriesPath}!`,
+      );
+      this.stopExploration(true);
+      return;
+    } else {
+      this.countries = countriesData.data;
+    }
+
+    /* **************************************************************************** */
+
+    // Get links data from a json file
     const jsonExplorationPath = `jsons/${this.targetKeyword}-exploration.json`;
     const explorationData =
       await this.jsonService.readJsonFile(jsonExplorationPath);
@@ -111,6 +161,8 @@ export class ExploreService implements OnModuleInit {
     } else {
       this.links = explorationData.data;
     }
+
+    /* **************************************************************************** */
 
     await this.initPuppeteer();
 
@@ -269,6 +321,10 @@ export class ExploreService implements OnModuleInit {
       if (answer === 'skip') {
         return;
       }
+      if (isCancel(answer)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
+      }
     }
 
     let link: Link;
@@ -284,6 +340,10 @@ export class ExploreService implements OnModuleInit {
       }
       if (answer === 'skip') {
         return;
+      }
+      if (isCancel(answer)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
       }
     }
 
@@ -329,6 +389,10 @@ export class ExploreService implements OnModuleInit {
         }
         if (answer === 'skip') {
           return;
+        }
+        if (isCancel(answer)) {
+          cancel('Operation cancelled.');
+          process.exit(0);
         }
       }
       if (dpClass?.length > 0 && !dpClass.includes(this.langCountryCode)) {
@@ -397,6 +461,10 @@ export class ExploreService implements OnModuleInit {
           if (answer === 'skip') {
             return;
           }
+          if (isCancel(answer)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+          }
 
           const newBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›Whiskys`;
           const replaceBreadcrumbs = await confirm({
@@ -444,7 +512,16 @@ export class ExploreService implements OnModuleInit {
         console.log('title:', title);
 
         const productTitle = $('#ppd #productTitle').text()?.trim();
-        console.log('productTitle:', productTitle);
+        console.log(
+          'productTitle:',
+          this.coloredText(ELogColor.FgYellow, productTitle),
+        );
+
+        if (!productTitle) {
+          this.coloredLog(ELogColor.FgRed, `Product title is missing!`);
+          this.stopExploration(true);
+          return;
+        }
 
         /* ********************************************************************************* */
 
@@ -668,7 +745,7 @@ export class ExploreService implements OnModuleInit {
           (item) => `${item.legend}-${item.value}`,
         );
 
-        console.log('details', details);
+        console.log('details:', details);
 
         /* ******************************* */
 
@@ -734,57 +811,85 @@ export class ExploreService implements OnModuleInit {
           return;
         }
 
-        const extractedCSSAndHTML = this.extractCSSAndHTML(
-          $('#dp #aplus').html(),
-        );
+        let descriptionCompressed: string;
+        let descDecompressedText: string;
+        let cocktail: boolean;
 
-        const cleanDescHTML = this.removeScriptsAndComments(
-          extractedCSSAndHTML.html,
-        );
+        if ($('#dp #aplus').length === 1) {
+          const extractedCSSAndHTML = this.extractCSSAndHTML(
+            $('#dp #aplus').html(),
+          );
 
-        if (!cleanDescHTML) {
-          this.coloredLog(ELogColor.FgRed, `HTML extraction empty!`);
-          this.stopExploration(true);
-          return;
-        }
+          const cleanDescHTML = this.removeScriptsAndComments(
+            extractedCSSAndHTML.html,
+          );
 
-        const cocktail = cleanDescHTML.includes('cocktail');
-        if (cocktail) {
-          this.coloredLog(ELogColor.FgYellow, 'Speak about cocktail!');
-        }
+          if (!cleanDescHTML) {
+            this.coloredLog(ELogColor.FgRed, `HTML extraction empty!`);
+            this.stopExploration(true);
+            return;
+          }
 
-        const descriptionCompressed =
-          await this.compressService.compress(cleanDescHTML);
+          cocktail = cleanDescHTML.includes('cocktail');
+          if (cocktail) {
+            this.coloredLog(ELogColor.FgYellow, 'Speak about cocktail!');
+          }
 
-        // Check if decompression works
-        const descriptionDecompressed = await this.compressService.decompress(
-          descriptionCompressed,
-        );
-        if (descriptionDecompressed !== cleanDescHTML) {
-          this.coloredLog(ELogColor.FgRed, `Compression problem!`);
-          this.stopExploration(true);
-          return;
-        }
+          descriptionCompressed =
+            await this.compressService.compress(cleanDescHTML);
 
-        const descDecompressedText = cheerio
-          .load(descriptionDecompressed)
-          .text();
+          // Check if decompression works
+          const descriptionDecompressed = await this.compressService.decompress(
+            descriptionCompressed,
+          );
+          if (descriptionDecompressed !== cleanDescHTML) {
+            this.coloredLog(ELogColor.FgRed, `Compression problem!`);
+            this.stopExploration(true);
+            return;
+          }
 
-        console.log(
-          this.coloredText(
-            ELogColor.FgGreen,
+          descDecompressedText = cheerio.load(descriptionDecompressed).text();
+
+          console.log(
             'manufacturerDescription decompressed text:',
-          ),
-          descDecompressedText,
-        );
+            descDecompressedText,
+          );
 
-        if (!descDecompressedText) {
-          this.coloredLog(ELogColor.FgRed, `Uncompressed text empty!`);
+          if (!descDecompressedText) {
+            this.coloredLog(ELogColor.FgRed, `Uncompressed text empty!`);
+            this.stopExploration(true);
+            return;
+          }
+        }
+
+        /* ****************************** DEFINE COUNTRY ************************************* */
+
+        // const country = await this.extractCountry(
+        //   productTitle,
+        //   details,
+        //   textDescription,
+        //   descDecompressedText,
+        // );
+
+        const country = await this.discoverCountry({
+          name: productTitle,
+          asin: this.extractASIN(canonicalLink),
+          details,
+          description: {
+            product: productDescription,
+            manufacturer: descriptionCompressed,
+          },
+        });
+
+        if (!country) {
+          this.coloredLog(ELogColor.FgRed, `country is undefined!`);
           this.stopExploration(true);
           return;
         }
 
-        /* ******************************* */
+        await this.utilsService.waitSeconds(3000);
+
+        /* ******************************************* */
 
         const finalAlcohol: CreateAlcoholInput = {
           asin: this.extractASIN(canonicalLink),
@@ -811,6 +916,7 @@ export class ExploreService implements OnModuleInit {
           type: this.targetKeyword,
           langCode: this.langCountryCode,
           newerVersion,
+          country,
         };
 
         if (cocktail) {
@@ -820,6 +926,481 @@ export class ExploreService implements OnModuleInit {
         return finalAlcohol;
       }
     }
+  }
+
+  private async enterCountryName() {
+    let country: CountryInfo;
+    const countryNameText = await text({
+      message: 'Enter a country or region name:',
+    });
+    if (isCancel(countryNameText)) {
+      cancel('Operation cancelled.');
+      process.exit(0);
+    }
+
+    const filterOptions: FilterOptions = {
+      exact: true,
+      keepKeys: [
+        'iso',
+        'iso3',
+        'names.fr',
+        'names.en',
+        'regions.iso',
+        'regions.names.fr',
+        'regions.names.en',
+      ],
+      keepOnlyMatchingRegions: true,
+    };
+    const foundCountries = this.countryService.searchCountriesOrRegions(
+      countryNameText.trim(),
+      filterOptions,
+    );
+    console.log('foundCountries', foundCountries);
+
+    if (foundCountries.length > 0) {
+      country = await this.selectCountry(foundCountries);
+    }
+
+    return country;
+  }
+
+  private async discoverCountry(alcohol: {
+    name: string;
+    asin: string;
+    details: any[];
+    description: { product: string; manufacturer?: string };
+  }) {
+    const brandName = alcohol.details.find((detail) =>
+      detail.legend.toLowerCase().includes('marque'),
+    )?.value;
+    const countryName = alcohol.details.find(
+      (detail) =>
+        detail.legend.toLowerCase().includes('pays') ||
+        detail.legend.toLowerCase().includes('country'),
+    )?.value;
+    const regionName = alcohol.details.find(
+      (detail) =>
+        detail.legend.toLowerCase().includes('région') ||
+        detail.legend.toLowerCase().includes('region'),
+    )?.value;
+    const asinLog = this.coloredText(ELogColor.FgYellow, alcohol.asin);
+    const brandNameLog = brandName
+      ? brandName
+      : this.coloredText(ELogColor.FgRed, brandName);
+    const countryNameLog = countryName
+      ? countryName
+      : this.coloredText(ELogColor.FgRed, countryName);
+    const regionNameLog = regionName
+      ? regionName
+      : this.coloredText(ELogColor.FgRed, regionName);
+    console.log(
+      `\n${asinLog} : ${brandNameLog} / ${countryNameLog} / ${regionNameLog}`,
+    );
+
+    let country = await this.extractCountry(
+      alcohol.name,
+      alcohol.details,
+      alcohol.description.product,
+      alcohol.description.manufacturer,
+    );
+    console.log(country);
+
+    if (!country) {
+      country = await this.enterCountryName();
+    }
+
+    if (country?.regions?.length > 1) {
+      this.coloredLog(ELogColor.FgRed, 'Several regions are found!');
+      // TODO: Maybe choose a region
+      return null;
+    }
+
+    const fullCountry = this.utilsService.deepCloneJSON(country);
+
+    if (country?.regions?.length === 1) {
+      country = country?.regions[0] as CountryInfo;
+    }
+
+    if (country) {
+      const foundCountryInJson = this.countries.some((jsonCountry) => {
+        return (
+          jsonCountry.country.en
+            .toLowerCase()
+            .trim()
+            .includes(country.names.en.toLowerCase().trim()) ||
+          jsonCountry.country.fr
+            .toLowerCase()
+            .trim()
+            .includes(country.names.fr.toLowerCase().trim())
+        );
+      });
+
+      if (!foundCountryInJson) {
+        const saveConfirmation = await confirm({
+          message: `Save the new country "${country.names.en}" in json?`,
+        });
+        if (isCancel(saveConfirmation)) {
+          cancel('Operation cancelled.');
+          process.exit(0);
+        }
+        if (saveConfirmation) {
+          this.countries.push({
+            nationalities: [],
+            country: {
+              en: country.names.en,
+              fr: country.names.fr,
+            },
+            whiskyDistilleries: [],
+            brands: [brandName.trim()],
+          });
+
+          await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
+            data: this.countries,
+          });
+        } else {
+          // return null;
+        }
+      }
+
+      const foundBrandInJson = this.countries.some((jsonCountry) => {
+        return jsonCountry.brands?.some((brand) => {
+          return brand
+            .toLowerCase()
+            .trim()
+            ?.includes(brandName.toLowerCase().trim());
+        });
+      });
+
+      if (!foundBrandInJson) {
+        const saveConfirmation = await confirm({
+          message: `Save the brand name "${brandName}" for "${country.names.en}" in json?`,
+        });
+        if (isCancel(saveConfirmation)) {
+          cancel('Operation cancelled.');
+          process.exit(0);
+        }
+        if (saveConfirmation) {
+          this.countries = this.countries.map((jsonCountry) => {
+            if (
+              jsonCountry.country.en.toLowerCase() ===
+                country.names.en.toLowerCase() ||
+              jsonCountry.country.fr.toLowerCase() ===
+                country.names.fr.toLowerCase()
+            ) {
+              if (!jsonCountry.brands) {
+                jsonCountry.brands = [];
+              }
+              jsonCountry.brands.push(brandName.trim());
+            }
+            return jsonCountry;
+          });
+
+          await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
+            data: this.countries,
+          });
+
+          await this.utilsService.waitSeconds(4000);
+        } else {
+          console.log('\nChoose a country to return');
+          return await this.enterCountryName();
+        }
+      }
+    }
+
+    return fullCountry;
+  }
+
+  private async extractCountry(
+    productTitle: string,
+    details: Details[],
+    textDescription: string,
+    descDecompressedText: string,
+  ): Promise<CountryInfo> {
+    // INFO: In english, country could be "American"...
+    // INFO: Region could be "Kentucky"...
+    const detailKeywords = ['pays', 'country', 'région', 'region'];
+    const keptDetails = details.filter((detail) =>
+      detailKeywords.some((keyword) =>
+        detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+      ),
+    );
+
+    keptDetails.forEach((detail) =>
+      console.log(`${detail.legend}: ${detail.value}`),
+    );
+
+    const filterOptions: FilterOptions = {
+      exact: true,
+      keepKeys: [
+        'iso',
+        'iso3',
+        'names.fr',
+        'names.en',
+        'regions.iso',
+        'regions.names.fr',
+        'regions.names.en',
+      ],
+      keepOnlyMatchingRegions: true,
+    };
+
+    let foundCountries: Country[];
+    let finalCountry: CountryInfo;
+
+    /* ******************************* STEP 0 : LOOK IN DETAILS - BRAND AND COUNTRY *********************************/
+
+    const brandDetail = details.find((detail) =>
+      ['marque', 'brand'].some((keyword) =>
+        detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+      ),
+    );
+    console.log(`Marque/Brand: ${brandDetail?.value}`);
+    if (brandDetail?.value?.length > 1) {
+      foundCountries = this.findCountriesByRegionsInTitle(
+        brandDetail?.value,
+        this.countries,
+        filterOptions,
+      );
+
+      let brandAndCountryMatches: boolean;
+      if (foundCountries.length === 1) {
+        brandAndCountryMatches = keptDetails.some((detail) => {
+          return (
+            detail.value.toLowerCase().trim() ===
+              foundCountries[0].names.en.toLowerCase() ||
+            detail.value.toLowerCase().trim() ===
+              foundCountries[0].names.fr.toLowerCase()
+          );
+        });
+      }
+
+      if (brandAndCountryMatches) {
+        return this.transformCountryToCountryInfo(foundCountries[0]);
+      }
+
+      finalCountry = await this.selectCountry(foundCountries);
+      if (finalCountry) {
+        return finalCountry;
+      }
+
+      this.coloredLog(ELogColor.FgRed, 'No country data found with brand!');
+    }
+
+    /* ******************************* STEP 1 : LOOK IN DETAILS *********************************/
+
+    if (keptDetails.length > 0) {
+      foundCountries = this.countryService.searchCountriesOrRegions(
+        keptDetails.map((d) => d.value).join(' '),
+        { ...filterOptions, ...{ searchInText: true } },
+      );
+
+      finalCountry = await this.selectCountry(foundCountries);
+      if (finalCountry) {
+        return finalCountry;
+      }
+    }
+
+    this.coloredLog(ELogColor.FgRed, 'No country data found in details!');
+
+    /* ******************************* STEP 2 : LOOK IN THE TITLE *********************************/
+
+    foundCountries = this.countryService.searchCountriesOrRegions(
+      productTitle,
+      { ...filterOptions, ...{ searchInText: true } },
+    );
+
+    finalCountry = await this.selectCountry(foundCountries);
+    if (finalCountry) {
+      return finalCountry;
+    }
+
+    this.coloredLog(ELogColor.FgRed, 'No country data found in title!');
+
+    /* ******************************* STEP 3 : LOOK IN THE TITLE (WITH MATCHING) *********************************/
+
+    foundCountries = this.findCountriesByRegionsInTitle(
+      `${productTitle}`, //  ${textDescription}
+      this.countries,
+      filterOptions,
+    );
+
+    finalCountry = await this.selectCountry(foundCountries);
+    if (finalCountry) {
+      return finalCountry;
+    }
+
+    this.coloredLog(
+      ELogColor.FgRed,
+      'No country data found in title (with mapping)!',
+    );
+
+    /* ******************************* STEP 4 : MISTRAL AI *********************************/
+
+    if (!finalCountry) {
+      /* ****************************** MISTRAL AI ************************************** */
+      // Donne aussi le drapeau (flag) en "Emoji Unicode", tel que {"flag": "🇺🇸"}, la valeur doit comporter uniquement des caractères unicode.
+      // N'oublie pas de prendre en considération les sous régions, comme les états américains, le Code ISO 3166-2 (sub) pour le Tennessee est : US-TN. Pour la Grande-Bretagne, le Code ISO 3166-2 (sub) pour le l'Écosse est : GB-SCT.
+      const prompt = `Guess what is the manufacturer country (distillery) about this product : title: "${productTitle}", description 1: "${textDescription}", description 2: "${descDecompressedText}". Give me the country name in english and french with the code alpha2 and alpha3 (ISO 3166-1), et si il y a une sous région, peux tu aussi donner le code comme SCT pour Scotland (ISO 3166-2).
+      Donne moi les infos sous forme d'objet json, uniquement les infos de pays sous forme {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Scotland","fr":"Écosse"},"iso":"SCT"}]}, autres exemples : {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Wales","fr":"Pays de Galles"},"iso":"WLS"}]} ou {"iso":"US","iso3":"USA","names":{"en":"United States","fr":"États-Unis"},"regions":[{"names":{"en":"Kentucky","fr":"Kentucky"},"iso":"KY"}]} ou {"names": {"en": "Japan", "fr": "Japon"}, "iso": "JP", "iso3": "JPN"}, précise absolument le résultat de cette manière : \`\`\`json {} \`\`\`. L'ouverture et la fermeture doivent absolument comporter trois apostrophes comme \`\`\`.
+      Le "regions" est optionnel.`;
+      const mistralResult = await this.huggingFaceService.analyzeText(
+        prompt,
+        EHFModel.MISTRAL,
+      );
+      const generatedText = mistralResult[0]?.generated_text;
+      const optimizedAnswerText = generatedText.replace(prompt, '');
+      const mistralCountries: CountryInfo[] =
+        this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+      console.log('mistralCountries?.length:', mistralCountries?.length);
+      finalCountry = mistralCountries.find(
+        (country) => Object.keys(country).length > 0,
+      );
+
+      console.log('country (Mistral AI):', finalCountry);
+
+      if (finalCountry) {
+        if (finalCountry.regions && finalCountry.regions.length === 0) {
+          delete finalCountry.regions;
+        }
+
+        const mistralCountrySaveConfirmation = await confirm({
+          message: `Are you sure you want to save this country's data?`,
+        });
+        if (!mistralCountrySaveConfirmation) {
+          return;
+        }
+      } else {
+        console.log('mistralResult:', generatedText);
+        this.coloredLog(ELogColor.FgRed, `Mistral country is null!`);
+        return;
+      }
+    }
+
+    return finalCountry;
+  }
+
+  private findCountriesByRegionsInTitle(
+    text: string,
+    regionCountryMappings: IRegionCountry[],
+    filterOptions: FilterOptions,
+  ): Country[] {
+    const textLower = text.toLowerCase();
+    let foundCountries: Country[] = [];
+    let countries: Country[];
+
+    let regionMatchFound: boolean;
+    let nationalityMatchFound: boolean;
+    let distilleryMatchFound: boolean;
+    let brandsMatchFound: boolean;
+    for (const mapping of regionCountryMappings) {
+      regionMatchFound = mapping.regions?.some((region) =>
+        textLower.includes(region.toLowerCase()),
+      );
+      nationalityMatchFound = mapping.nationalities?.some((nationality) =>
+        textLower.includes(nationality.toLowerCase()),
+      );
+      distilleryMatchFound = mapping.whiskyDistilleries?.some((distillery) =>
+        textLower.includes(distillery.toLowerCase()),
+      );
+      brandsMatchFound = mapping.brands?.some((brand) =>
+        textLower.includes(brand.toLowerCase()),
+      );
+
+      if (
+        regionMatchFound ||
+        nationalityMatchFound ||
+        distilleryMatchFound ||
+        brandsMatchFound
+      ) {
+        mapping.regions?.some((region) => {
+          if (textLower.includes(region.toLowerCase())) {
+            console.log(' regions:', textLower, '=>', region.toLowerCase());
+          }
+        });
+        mapping.nationalities?.some((nationality) => {
+          if (textLower.includes(nationality.toLowerCase())) {
+            console.log(
+              ' nationalities:',
+              textLower,
+              '=>',
+              nationality.toLowerCase(),
+            );
+          }
+        });
+        mapping.whiskyDistilleries?.some((distillery) => {
+          if (textLower.includes(distillery.toLowerCase())) {
+            console.log(
+              ' distilleries:',
+              textLower,
+              '=>',
+              distillery.toLowerCase(),
+            );
+          }
+        });
+        mapping.brands?.some((brand) => {
+          if (textLower.includes(brand.toLowerCase())) {
+            console.log(' brands:', textLower, '=>', brand.toLowerCase());
+          }
+        });
+
+        countries = this.countryService.searchCountriesOrRegions(
+          mapping.country.en,
+          filterOptions,
+        );
+        foundCountries = [...foundCountries, ...countries];
+      }
+    }
+
+    return foundCountries;
+  }
+
+  private transformCountryToCountryInfo(country: Country): CountryInfo {
+    if (!country) {
+      return null;
+    }
+
+    const countryInfo = new CountryInfo();
+
+    countryInfo.names = { ...country.names } as any;
+    countryInfo.iso = country.iso;
+    countryInfo.iso3 = country.iso3;
+
+    if (country.regions) {
+      countryInfo.regions = country.regions.map((region) => {
+        const regionInfo = new RegionInfo();
+
+        regionInfo.names = { ...region.names } as any;
+        regionInfo.iso = region.iso;
+
+        return regionInfo;
+      });
+    }
+
+    return countryInfo;
+  }
+
+  private async selectCountry(
+    mergedCountries: Country[],
+  ): Promise<CountryInfo> {
+    let selectedCountry: Country;
+    if (mergedCountries?.length === 1) {
+      selectedCountry = mergedCountries[0];
+    } else if (mergedCountries?.length > 1) {
+      const countryOptions = mergedCountries.map((country) => ({
+        value: country,
+        label: `${country.names.en} (${country.iso})${country.regions?.length === 1 ? ' / ' + country.regions[0].names.en : ' / (' + (country.regions?.length || 0) + ' region(s))'}`,
+      }));
+      const selectResult = await select({
+        message: 'Select a country/region ?',
+        options: countryOptions,
+      });
+      if (typeof selectResult === 'symbol') {
+        console.log('> symbol result:', selectResult);
+      } else {
+        selectedCountry = selectResult;
+      }
+    }
+
+    return this.transformCountryToCountryInfo(selectedCountry);
   }
 
   private processImageUrl(url: string, withParams = true): string {
@@ -1056,6 +1637,15 @@ export class ExploreService implements OnModuleInit {
       const selectTargetKey = `alcoholwhiskies-21`;
       const getLinkButtonId = 'amzn-ss-get-link-btn-text-announce';
       const shortlinkTextarea = 'amzn-ss-text-shortlink-textarea';
+
+      console.log(
+        'category:',
+        $('.amzn-ss-category .amzn-ss-content').text()?.trim(),
+      );
+      console.log(
+        'commission-rate:',
+        $('.amzn-ss-commission-rate .amzn-ss-content').text()?.trim(),
+      );
 
       await this.page.click(`#${buttonId}`);
       await this.utilsService.waitSeconds(2000);

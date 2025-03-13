@@ -11,6 +11,7 @@ import { Images } from './images.entity';
 import { FamilyLink } from './family-link.entity';
 import { Reviews } from './reviews.entity';
 import { Details } from './details.entity';
+import { CountryInfo } from './country-info.entity';
 
 export type AlcoholDocument = Alcohol & Document;
 
@@ -80,6 +81,10 @@ export class Alcohol {
   @Field(() => FamilyLink, { nullable: true })
   @Prop({ type: FamilyLink, required: false })
   newerVersion?: FamilyLink;
+
+  @Field(() => CountryInfo, { nullable: true })
+  @Prop({ type: CountryInfo, required: false })
+  country?: CountryInfo;
 }
 
 const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
