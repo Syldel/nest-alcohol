@@ -205,5 +205,92 @@ describe('CountryService', () => {
         expect(result.length).toBe(1);
       });
     });
+
+    describe('keepOnlyMatchingRegions option enabled', () => {
+      it('should return only french translations of 1 country and 1 region', () => {
+        const result = countryService.searchCountriesOrRegions('Kentucky', {
+          keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
+          exact: true,
+          keepOnlyMatchingRegions: true,
+        });
+
+        expect(result).toEqual([
+          {
+            iso: 'US',
+            iso3: 'USA',
+            names: { fr: 'États-Unis' },
+            regions: [{ names: { fr: 'Kentucky' } }],
+          },
+        ]);
+        expect(result.length).toBe(1);
+      });
+
+      it('should return country with region in searchInText mode', () => {
+        const result = countryService.searchCountriesOrRegions(
+          `Sans Gluten Bouteille United States 1,08 Kilogrammes DIAGEO Kentucky Bourbon (adding also Tennessee) (french sentence: "Où çà, l'été rêvé à Évreux ?")`,
+          {
+            keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
+            exact: true,
+            searchInText: true,
+            keepOnlyMatchingRegions: true,
+          },
+        );
+
+        expect(result).toEqual([
+          {
+            iso: 'US',
+            iso3: 'USA',
+            names: { fr: 'États-Unis' },
+            regions: [
+              { names: { fr: 'Tennessee' } },
+              { names: { fr: 'Kentucky' } },
+            ],
+          },
+        ]);
+        expect(result.length).toBe(1);
+      });
+
+      it('should return country with region in searchInText mode with accents in the sentence', () => {
+        const result = countryService.searchCountriesOrRegions(
+          `TAMNAVULIN - Double Cask - Whisky Single Malt - Notes d'Amandes & de Miel - A déguster sec - 40 % Alcool - Origine : Écosse/Speyside - 70 cl`,
+          {
+            keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
+            exact: true,
+            searchInText: true,
+            keepOnlyMatchingRegions: true,
+          },
+        );
+
+        expect(result).toEqual([
+          {
+            iso: 'GB',
+            iso3: 'GBR',
+            names: { fr: 'Royaume-Uni' },
+            regions: [{ names: { fr: 'Écosse' } }],
+          },
+        ]);
+        expect(result.length).toBe(1);
+      });
+    });
+  });
+
+  describe('filterRegions', () => {
+    it('should return regions that match the search term', () => {
+      const mockRegions: any[] = [
+        {
+          names: { en: 'California', es: 'California' },
+          iso: 'US-CA',
+        },
+        {
+          names: { en: 'Texas', es: 'Tejas' },
+          iso: 'US-TX',
+        },
+      ];
+
+      const result = countryService.filterRegions('calif', mockRegions);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].names.en).toBe('California');
+    });
   });
 });

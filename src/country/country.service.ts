@@ -43,6 +43,7 @@ export interface FilterOptions {
   searchInText?: boolean;
   keepKeys?: string[];
   exact?: boolean;
+  keepOnlyMatchingRegions?: boolean;
 }
 
 @Injectable()
@@ -66,7 +67,7 @@ export class CountryService {
     let matchesNames: boolean;
     let matchesRegions: boolean;
     let extraKeepKeys: string[];
-    const filtered: Country[] = Object.entries(dataSet)
+    let filtered: Country[] = Object.entries(dataSet)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       .filter(([code, country]) => {
         if (options?.keepKeys?.length > 0) {
@@ -105,6 +106,22 @@ export class CountryService {
         return country;
       });
 
+    if (options?.keepOnlyMatchingRegions) {
+      filtered = filtered
+        .map((country) => ({
+          ...country,
+          ...{
+            regions: this.filterRegions(searchTerm, country.regions, options),
+          },
+        }))
+        .map((country) => {
+          if (country.regions.length === 0) {
+            delete country.regions;
+          }
+          return country;
+        });
+    }
+
     return filtered;
   }
 
@@ -127,7 +144,17 @@ export class CountryService {
     }
 
     if (options?.searchInText) {
-      return lowerSearchTerm.includes(countryName) && name.length > 0;
+      if (options?.exact) {
+        return lowerSearchTerm
+          .replace(/[^a-zA-Z0-9À-ÿ]/g, ' ')
+          .split(' ')
+          .filter((searchWord) => searchWord.length > 1)
+          .some((searchWord) => {
+            return searchWord === countryName;
+          });
+      } else {
+        return lowerSearchTerm.includes(countryName) && name.length > 0;
+      }
     }
 
     if (options?.exact) {
@@ -135,5 +162,17 @@ export class CountryService {
     } else {
       return countryName.includes(lowerSearchTerm);
     }
+  }
+
+  public filterRegions(
+    searchTerm: string,
+    regions: Region[],
+    options?: FilterOptions,
+  ) {
+    return regions.filter((region) => {
+      return Object.values(region.names).some((regionName) => {
+        return this.processCountryName(searchTerm, regionName, options);
+      });
+    });
   }
 }
