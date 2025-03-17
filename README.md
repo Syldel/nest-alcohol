@@ -40,6 +40,18 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Madge
+
+Madge is a developer tool for generating a visual graph of your module dependencies, finding circular dependencies, and giving you other useful info.
+
+```bash
+npm install -g madge
+```
+
+```bash
+madge --circular src/app.module.ts
+```
+
 ## GraphQL
 
 <img src="https://graphql.org/_next/static/media/logo.ad338028.svg" alt="GraphQL Logo" width="100" />
