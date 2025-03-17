@@ -1,8 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
-import { UtilsService } from '../services';
-
-import allCountriesData from 'iso3166-2-db/data/iso3166-2.json';
+import { JsonProcessingService, UtilsService } from '../services';
 
 export type Region = {
   name: string;
@@ -48,63 +46,65 @@ export interface FilterOptions {
 
 @Injectable()
 export class CountryService {
-  constructor(private readonly utilsService: UtilsService) {}
+  constructor(
+    private readonly utilsService: UtilsService,
+    @Inject(forwardRef(() => JsonProcessingService))
+    private readonly jsonProcessingService: JsonProcessingService,
+  ) {}
 
-  get allCountries(): { [key: string]: Country } {
-    return allCountriesData;
-  }
-
-  public searchCountriesOrRegions(
+  public async searchCountriesOrRegions(
     searchTerm: string,
     options?: FilterOptions,
-  ): Country[] {
+  ): Promise<Country[]> {
     if (!searchTerm) {
       return [];
     }
 
-    const dataSet: { [key: string]: Country } = allCountriesData;
-
     let matchesNames: boolean;
     let matchesRegions: boolean;
     let extraKeepKeys: string[];
-    let filtered: Country[] = Object.entries(dataSet)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .filter(([code, country]) => {
-        if (options?.keepKeys?.length > 0) {
-          // We need to add 'names' and 'regions.names' to be able to do a search on it!
-          extraKeepKeys = this.utilsService.deepCloneJSON(options.keepKeys);
-          extraKeepKeys.push('names', 'regions.names');
-          extraKeepKeys = this.utilsService.removeDuplicates(
-            extraKeepKeys,
-            (item) => item,
-          );
 
-          country = this.utilsService.pick(country, extraKeepKeys);
-        }
+    const filePath = 'node_modules/iso3166-2-db/data/iso3166-2.json';
 
-        matchesNames = Object.values(country.names).some((countryName) => {
-          return this.processCountryName(searchTerm, countryName, options);
+    let filtered: Country[] = [];
+    const processLine = (country: Country) => {
+      if (options?.keepKeys?.length > 0) {
+        // We need to add 'names' and 'regions.names' to be able to do a search on it!
+        extraKeepKeys = this.utilsService.deepCloneJSON(options.keepKeys);
+        extraKeepKeys.push('names', 'regions.names');
+        extraKeepKeys = this.utilsService.removeDuplicates(
+          extraKeepKeys,
+          (item) => item,
+        );
+
+        country = this.utilsService.pick(country, extraKeepKeys);
+      }
+
+      matchesNames = Object.values(country.names).some((countryName) => {
+        return this.processCountryName(searchTerm, countryName, options);
+      });
+
+      matchesRegions =
+        country.regions &&
+        country.regions.some((region) => {
+          return Object.values(region.names).some((regionName) => {
+            return this.processCountryName(searchTerm, regionName, options);
+          });
         });
 
-        matchesRegions =
-          country.regions &&
-          country.regions.some((region) => {
-            return Object.values(region.names).some((regionName) => {
-              return this.processCountryName(searchTerm, regionName, options);
-            });
-          });
+      if (matchesNames || matchesRegions) {
+        filtered.push(country);
+      }
+    };
 
-        return matchesNames || matchesRegions;
-      })
-      .map(([code, country]) => {
-        return { code, ...country };
-      })
-      .map((country) => {
-        if (options?.keepKeys?.length > 0) {
-          return this.utilsService.pick(country, options.keepKeys);
-        }
-        return country;
-      });
+    await this.jsonProcessingService.processJsonFile(filePath, processLine);
+
+    filtered = filtered.map((country) => {
+      if (options?.keepKeys?.length > 0) {
+        return this.utilsService.pick(country, options.keepKeys);
+      }
+      return country;
+    });
 
     if (options?.keepOnlyMatchingRegions) {
       filtered = filtered

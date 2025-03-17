@@ -10,6 +10,7 @@ import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
 import { HttpClientService } from './http-client.service';
 import { CountryService, FilterOptions } from '../country/country.service';
+import { JsonProcessingService } from './json-processing.service';
 
 jest.mock('@clack/prompts', () => ({
   confirm: jest.fn(),
@@ -47,6 +48,7 @@ describe('ExploreService', () => {
         HuggingFaceService,
         HttpClientService,
         CountryService,
+        JsonProcessingService,
       ],
     }).compile();
 
@@ -845,10 +847,12 @@ describe('ExploreService', () => {
 
   describe('extractCountry', () => {
     let searchCountrySpy: jest.SpyInstance;
+    let findMatchesSpy: jest.SpyInstance;
     let huggingFaceAnalyzeSpy: jest.SpyInstance;
 
     beforeEach(() => {
       if (searchCountrySpy) searchCountrySpy.mockClear();
+      if (findMatchesSpy) findMatchesSpy.mockClear();
       if (huggingFaceAnalyzeSpy) huggingFaceAnalyzeSpy.mockClear();
     });
 
@@ -885,6 +889,96 @@ describe('ExploreService', () => {
         iso3: 'USA',
         names: { en: 'United States', fr: 'États-Unis' },
         regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+      });
+    });
+
+    describe('findCountryMatches', () => {
+      it('should extract country information when brand detail is present', async () => {
+        findMatchesSpy = jest
+          .spyOn(exploreService as any, 'findCountryMatches')
+          .mockReturnValueOnce([
+            {
+              iso: 'US',
+              iso3: 'USA',
+              names: { en: 'United States', fr: 'États-Unis' },
+              regions: [
+                { names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' },
+              ],
+            },
+          ]);
+
+        const details = [
+          { legend: 'Marque', value: 'Bulleit' },
+          { legend: "Pays d'origine", value: 'United States' },
+          { legend: 'Région de production', value: 'Kentucky' },
+        ];
+
+        const result = await exploreService['extractCountry'](
+          '',
+          details,
+          '',
+          '',
+        );
+
+        expect(findMatchesSpy).toHaveBeenCalledWith(
+          'Bulleit',
+          undefined,
+          expect.any(Object),
+        );
+        expect(result).toEqual({
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+        });
+      });
+
+      it('should extract country information when brand detail is present - and returns several countries', async () => {
+        findMatchesSpy = jest
+          .spyOn(exploreService as any, 'findCountryMatches')
+          .mockReturnValueOnce([
+            {
+              iso: 'US',
+              iso3: 'USA',
+              names: { en: 'United States', fr: 'États-Unis' },
+              regions: [
+                { names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' },
+              ],
+            },
+            {
+              iso: 'GB',
+              iso3: 'GBR',
+              names: { en: 'United Kingdom', fr: 'Royaume-Uni' },
+              regions: [
+                { names: { en: 'Scotland', fr: 'Écosse' }, iso: 'SCT' },
+              ],
+            },
+          ]);
+
+        const details = [
+          { legend: 'Marque', value: 'Bulleit' },
+          { legend: "Pays d'origine", value: 'United States' },
+          { legend: 'Région de production', value: 'Kentucky' },
+        ];
+
+        const result = await exploreService['extractCountry'](
+          '',
+          details,
+          '',
+          '',
+        );
+
+        expect(findMatchesSpy).toHaveBeenCalledWith(
+          'Bulleit',
+          undefined,
+          expect.any(Object),
+        );
+        expect(result).toEqual({
+          iso: 'US',
+          iso3: 'USA',
+          names: { en: 'United States', fr: 'États-Unis' },
+          regions: [{ names: { en: 'Kentucky', fr: 'Kentucky' }, iso: 'KY' }],
+        });
       });
     });
 
@@ -928,7 +1022,7 @@ describe('ExploreService', () => {
     });
   });
 
-  describe('findCountriesByRegionsInTitle', () => {
+  describe('findCountryMatches', () => {
     const regionCountryMappings: IRegionCountry[] = [
       {
         regions: ['highland', 'speyside'],
@@ -966,10 +1060,10 @@ describe('ExploreService', () => {
         ]);
     });
 
-    it('should return countries when a region match is found in the text', () => {
+    it('should return countries when a region match is found in the text', async () => {
       const text = 'This is a Highland whisky';
 
-      const result = exploreService['findCountriesByRegionsInTitle'](
+      const result = await exploreService['findCountryMatches'](
         text,
         regionCountryMappings,
         filterOptions,
@@ -980,10 +1074,10 @@ describe('ExploreService', () => {
       expect(result[0].iso).toBe('GB');
     });
 
-    it('should return countries when a nationality match is found in the text', () => {
+    it('should return countries when a nationality match is found in the text', async () => {
       const text = 'This is a Scottish whisky';
 
-      const result = exploreService['findCountriesByRegionsInTitle'](
+      const result = await exploreService['findCountryMatches'](
         text,
         regionCountryMappings,
         filterOptions,
@@ -994,10 +1088,10 @@ describe('ExploreService', () => {
       expect(result[0].iso).toBe('GB');
     });
 
-    it('should return countries when a distillery match is found in the text', () => {
+    it('should return countries when a distillery match is found in the text', async () => {
       const text = 'This is a Glenlivet whisky';
 
-      const result = exploreService['findCountriesByRegionsInTitle'](
+      const result = await exploreService['findCountryMatches'](
         text,
         regionCountryMappings,
         filterOptions,
@@ -1008,7 +1102,7 @@ describe('ExploreService', () => {
       expect(result[0].iso).toBe('GB');
     });
 
-    it('should return countries when a distillery match and a nationality match (from another country) are found in the text', () => {
+    it('should return countries when a distillery match and a nationality match (from another country) are found in the text', async () => {
       if (searchCountrySpy) searchCountrySpy.mockReset();
 
       searchCountrySpy = jest
@@ -1031,7 +1125,7 @@ describe('ExploreService', () => {
 
       const text = 'This is a Scottish whisky from Bushmills';
 
-      const result = exploreService['findCountriesByRegionsInTitle'](
+      const result = await exploreService['findCountryMatches'](
         text,
         regionCountryMappings,
         filterOptions,

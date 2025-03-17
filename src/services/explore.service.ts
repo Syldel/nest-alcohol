@@ -951,7 +951,7 @@ export class ExploreService implements OnModuleInit {
       ],
       keepOnlyMatchingRegions: true,
     };
-    const foundCountries = this.countryService.searchCountriesOrRegions(
+    const foundCountries = await this.countryService.searchCountriesOrRegions(
       countryNameText.trim(),
       filterOptions,
     );
@@ -1155,40 +1155,53 @@ export class ExploreService implements OnModuleInit {
     );
     console.log(`Marque/Brand: ${brandDetail?.value}`);
     if (brandDetail?.value?.length > 1) {
-      foundCountries = this.findCountriesByRegionsInTitle(
+      foundCountries = await this.findCountryMatches(
         brandDetail?.value,
         this.countries,
         filterOptions,
       );
 
-      let brandAndCountryMatches: boolean;
-      if (foundCountries.length === 1) {
-        brandAndCountryMatches = keptDetails.some((detail) => {
-          return (
-            detail.value.toLowerCase().trim() ===
-              foundCountries[0].names.en.toLowerCase() ||
-            detail.value.toLowerCase().trim() ===
-              foundCountries[0].names.fr.toLowerCase()
-          );
+      if (foundCountries.length > 1) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          'Several countries have been found with the brand!',
+        );
+
+        foundCountries = foundCountries.filter((country) => {
+          return keptDetails.some((detail) => {
+            return (
+              detail.value.toLowerCase().trim() ===
+                country.names.en.toLowerCase() ||
+              detail.value.toLowerCase().trim() ===
+                country.names.fr.toLowerCase()
+            );
+          });
         });
       }
 
-      if (brandAndCountryMatches) {
+      if (foundCountries.length === 0) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          'No country found with brand (after filtering)!',
+        );
+      } else if (foundCountries.length > 1) {
+        this.coloredLog(
+          ELogColor.FgRed,
+          'Several countries have been found with the brand!',
+        );
+        finalCountry = await this.selectCountry(foundCountries);
+        if (finalCountry) {
+          return finalCountry;
+        }
+      } else if (foundCountries.length === 1) {
         return this.transformCountryToCountryInfo(foundCountries[0]);
       }
-
-      finalCountry = await this.selectCountry(foundCountries);
-      if (finalCountry) {
-        return finalCountry;
-      }
-
-      this.coloredLog(ELogColor.FgRed, 'No country data found with brand!');
     }
 
     /* ******************************* STEP 1 : LOOK IN DETAILS *********************************/
 
     if (keptDetails.length > 0) {
-      foundCountries = this.countryService.searchCountriesOrRegions(
+      foundCountries = await this.countryService.searchCountriesOrRegions(
         keptDetails.map((d) => d.value).join(' '),
         { ...filterOptions, ...{ searchInText: true } },
       );
@@ -1203,7 +1216,7 @@ export class ExploreService implements OnModuleInit {
 
     /* ******************************* STEP 2 : LOOK IN THE TITLE *********************************/
 
-    foundCountries = this.countryService.searchCountriesOrRegions(
+    foundCountries = await this.countryService.searchCountriesOrRegions(
       productTitle,
       { ...filterOptions, ...{ searchInText: true } },
     );
@@ -1217,7 +1230,7 @@ export class ExploreService implements OnModuleInit {
 
     /* ******************************* STEP 3 : LOOK IN THE TITLE (WITH MATCHING) *********************************/
 
-    foundCountries = this.findCountriesByRegionsInTitle(
+    foundCountries = await this.findCountryMatches(
       `${productTitle}`, //  ${textDescription}
       this.countries,
       filterOptions,
@@ -1278,11 +1291,11 @@ export class ExploreService implements OnModuleInit {
     return finalCountry;
   }
 
-  private findCountriesByRegionsInTitle(
+  private async findCountryMatches(
     text: string,
     regionCountryMappings: IRegionCountry[],
     filterOptions: FilterOptions,
-  ): Country[] {
+  ): Promise<Country[]> {
     const textLower = text.toLowerCase();
     let foundCountries: Country[] = [];
     let countries: Country[];
@@ -1342,7 +1355,7 @@ export class ExploreService implements OnModuleInit {
           }
         });
 
-        countries = this.countryService.searchCountriesOrRegions(
+        countries = await this.countryService.searchCountriesOrRegions(
           mapping.country.en,
           filterOptions,
         );

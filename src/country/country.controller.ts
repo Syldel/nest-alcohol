@@ -12,7 +12,7 @@ export class CountryController {
 
   @Post('search')
   async searchCountries(@Body() body: SearchParamsDto) {
-    return this.countryService.searchCountriesOrRegions(
+    return await this.countryService.searchCountriesOrRegions(
       body.term,
       body.options,
     );

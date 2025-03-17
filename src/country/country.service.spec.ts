@@ -1,23 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { UtilsService } from '../services';
-
 import { CountryService } from './country.service';
+import { CountryModule } from './country.module';
 
 describe('CountryService', () => {
   let countryService: CountryService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CountryService, UtilsService],
+      imports: [CountryModule],
     }).compile();
 
     countryService = module.get<CountryService>(CountryService);
   });
 
   describe('searchCountriesOrRegions', () => {
-    it('should return 2 countries data when search term matches a region name', () => {
-      const result = countryService.searchCountriesOrRegions('Wales');
+    it('should return 2 countries data when search term matches a region name', async () => {
+      const result = await countryService.searchCountriesOrRegions('Wales');
 
       expect(result).toEqual(
         expect.arrayContaining([
@@ -27,31 +26,31 @@ describe('CountryService', () => {
       );
     });
 
-    it('should return 1 country data when search term matches a region name', () => {
-      const result = countryService.searchCountriesOrRegions('Scotland');
+    it('should return 1 country data when search term matches a region name', async () => {
+      const result = await countryService.searchCountriesOrRegions('Scotland');
 
       expect(result).toEqual([expect.objectContaining({ iso: 'GB' })]);
     });
 
-    it('should return 1 country data when search term matches a region name - extra spaces case', () => {
-      const result = countryService.searchCountriesOrRegions('Scotland ');
+    it('should return 1 country data when search term matches a region name - extra spaces case', async () => {
+      const result = await countryService.searchCountriesOrRegions('Scotland ');
 
       expect(result).toEqual([expect.objectContaining({ iso: 'GB' })]);
     });
 
-    it('should return empty array data when search term is empty, null or undefined', () => {
-      const resultEmpty = countryService.searchCountriesOrRegions('');
-      const resultNull = countryService.searchCountriesOrRegions(null);
+    it('should return empty array data when search term is empty, null or undefined', async () => {
+      const resultEmpty = await countryService.searchCountriesOrRegions('');
+      const resultNull = await countryService.searchCountriesOrRegions(null);
       const resultUndefined =
-        countryService.searchCountriesOrRegions(undefined);
+        await countryService.searchCountriesOrRegions(undefined);
 
       expect(resultEmpty).toEqual([]);
       expect(resultNull).toEqual([]);
       expect(resultUndefined).toEqual([]);
     });
 
-    it('should return 2 countries data when search term matches a region name written in french', () => {
-      const result = countryService.searchCountriesOrRegions('Écosse');
+    it('should return 2 countries data when search term matches a region name written in french', async () => {
+      const result = await countryService.searchCountriesOrRegions('Écosse');
 
       expect(result).toEqual([
         expect.objectContaining({ iso: 'CA' }),
@@ -59,9 +58,9 @@ describe('CountryService', () => {
       ]);
     });
 
-    it('should return 2 countries when remvoveAccents option is true', () => {
-      const result = countryService.searchCountriesOrRegions('Ecosse');
-      const resultRemoveAccents = countryService.searchCountriesOrRegions(
+    it('should return 2 countries when remvoveAccents option is true', async () => {
+      const result = await countryService.searchCountriesOrRegions('Ecosse');
+      const resultRemoveAccents = await countryService.searchCountriesOrRegions(
         'Ecosse',
         { removeAccents: true },
       );
@@ -73,20 +72,20 @@ describe('CountryService', () => {
       ]);
     });
 
-    it('should return 1 country data when search term matches a country name written in french', () => {
-      const result = countryService.searchCountriesOrRegions('Japon');
+    it('should return 1 country data when search term matches a country name written in french', async () => {
+      const result = await countryService.searchCountriesOrRegions('Japon');
 
       expect(result).toEqual([expect.objectContaining({ iso3: 'JPN' })]);
     });
 
-    it('should return 1 country data when search term matches a region name', () => {
-      const result = countryService.searchCountriesOrRegions('Kentucky');
+    it('should return 1 country data when search term matches a region name', async () => {
+      const result = await countryService.searchCountriesOrRegions('Kentucky');
 
       expect(result).toEqual([expect.objectContaining({ iso3: 'USA' })]);
     });
 
-    it('should return only french translations', () => {
-      const result = countryService.searchCountriesOrRegions('Irlande', {
+    it('should return only french translations', async () => {
+      const result = await countryService.searchCountriesOrRegions('Irlande', {
         keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
       });
 
@@ -120,17 +119,20 @@ describe('CountryService', () => {
       ]);
     });
 
-    it('should return french and english translations', () => {
-      const result = countryService.searchCountriesOrRegions('Thaïlande', {
-        keepKeys: [
-          'iso',
-          'iso3',
-          'names.en',
-          'names.fr',
-          'regions.names.en',
-          'regions.names.fr',
-        ],
-      });
+    it('should return french and english translations', async () => {
+      const result = await countryService.searchCountriesOrRegions(
+        'Thaïlande',
+        {
+          keepKeys: [
+            'iso',
+            'iso3',
+            'names.en',
+            'names.fr',
+            'regions.names.en',
+            'regions.names.fr',
+          ],
+        },
+      );
 
       expect(result).toEqual([
         {
@@ -147,8 +149,8 @@ describe('CountryService', () => {
     });
 
     describe('searchInText option enabled', () => {
-      it('should not found corresponding', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should not found corresponding', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           'Knockando Whisky Ecosse Speyside Single Malt 12 ans 70cl',
           { searchInText: true },
         );
@@ -156,8 +158,8 @@ describe('CountryService', () => {
         expect(result).toEqual([]);
       });
 
-      it('should not found corresponding', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should not found corresponding', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           'The Dubliner Irish Whisky Bourbon Cask Aged 40° 70cl',
           { searchInText: true },
         );
@@ -165,8 +167,8 @@ describe('CountryService', () => {
         expect(result).toEqual([]);
       });
 
-      it('should find 2 countries', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should find 2 countries', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           'Togouchi Premium Whisky Japonais 40° 70cl',
           { searchInText: true },
         );
@@ -177,8 +179,8 @@ describe('CountryService', () => {
         ]);
       });
 
-      it('should find 1 country when remvoveAccents option is true', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should find 1 country when remvoveAccents option is true', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           'Knockando Whisky Ecosse Speyside Single Malt 12 ans 70cl',
           { searchInText: true, removeAccents: true },
         );
@@ -188,11 +190,14 @@ describe('CountryService', () => {
     });
 
     describe('exact option enabled', () => {
-      it('should return only french translations and 1 country', () => {
-        const result = countryService.searchCountriesOrRegions('Irlande', {
-          keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
-          exact: true,
-        });
+      it('should return only french translations and 1 country', async () => {
+        const result = await countryService.searchCountriesOrRegions(
+          'Irlande',
+          {
+            keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
+            exact: true,
+          },
+        );
 
         expect(result).toEqual([
           {
@@ -207,12 +212,15 @@ describe('CountryService', () => {
     });
 
     describe('keepOnlyMatchingRegions option enabled', () => {
-      it('should return only french translations of 1 country and 1 region', () => {
-        const result = countryService.searchCountriesOrRegions('Kentucky', {
-          keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
-          exact: true,
-          keepOnlyMatchingRegions: true,
-        });
+      it('should return only french translations of 1 country and 1 region', async () => {
+        const result = await countryService.searchCountriesOrRegions(
+          'Kentucky',
+          {
+            keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
+            exact: true,
+            keepOnlyMatchingRegions: true,
+          },
+        );
 
         expect(result).toEqual([
           {
@@ -225,8 +233,8 @@ describe('CountryService', () => {
         expect(result.length).toBe(1);
       });
 
-      it('should return country with region in searchInText mode', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should return country with region in searchInText mode', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           `Sans Gluten Bouteille United States 1,08 Kilogrammes DIAGEO Kentucky Bourbon (adding also Tennessee) (french sentence: "Où çà, l'été rêvé à Évreux ?")`,
           {
             keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
@@ -250,8 +258,8 @@ describe('CountryService', () => {
         expect(result.length).toBe(1);
       });
 
-      it('should return country with region in searchInText mode with accents in the sentence', () => {
-        const result = countryService.searchCountriesOrRegions(
+      it('should return country with region in searchInText mode with accents in the sentence', async () => {
+        const result = await countryService.searchCountriesOrRegions(
           `TAMNAVULIN - Double Cask - Whisky Single Malt - Notes d'Amandes & de Miel - A déguster sec - 40 % Alcool - Origine : Écosse/Speyside - 70 cl`,
           {
             keepKeys: ['iso', 'iso3', 'names.fr', 'regions.names.fr'],
