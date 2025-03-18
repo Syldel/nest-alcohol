@@ -2,13 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { CountryService } from './country.service';
 import { CountryModule } from './country.module';
+import { SharedModule } from '../services/shared.module';
 
 describe('CountryService', () => {
   let countryService: CountryService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [CountryModule],
+      imports: [CountryModule, SharedModule],
     }).compile();
 
     countryService = module.get<CountryService>(CountryService);

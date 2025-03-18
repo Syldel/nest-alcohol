@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { ExploreService, JsonService, UtilsService } from '../services';
 import { AlcoholModule } from '../alcohol/alcohol.module';
-import { CompressService } from '../compress/compress.service';
 import { HuggingFaceModule } from '../huggingface/huggingface.module';
 import { CountryModule } from '../country/country.module';
+import { CompressModule } from 'src/compress/compress.module';
+import { ExploreService } from './explore.service';
 
 @Module({
   imports: [
@@ -13,8 +13,9 @@ import { CountryModule } from '../country/country.module';
     AlcoholModule,
     HuggingFaceModule,
     CountryModule,
+    CompressModule,
   ],
-  providers: [ExploreService, UtilsService, JsonService, CompressService],
+  providers: [ExploreService],
   exports: [ExploreService],
 })
 export class ExploreModule {}

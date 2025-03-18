@@ -1,6 +1,7 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { JsonProcessingService, UtilsService } from '../services';
+import { JsonProcessingService } from '../services/json-processing.service';
+import { UtilsService } from '../services/utils.service';
 
 export type Region = {
   name: string;
@@ -48,7 +49,6 @@ export interface FilterOptions {
 export class CountryService {
   constructor(
     private readonly utilsService: UtilsService,
-    @Inject(forwardRef(() => JsonProcessingService))
     private readonly jsonProcessingService: JsonProcessingService,
   ) {}
 

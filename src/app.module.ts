@@ -11,6 +11,7 @@ import { ExploreModule } from './services/explore.module';
 import { CompressModule } from './compress/compress.module';
 import { HuggingFaceModule } from './huggingface/huggingface.module';
 import { CountryModule } from './country/country.module';
+import { SharedModule } from './services/shared.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -31,6 +32,7 @@ const isProduction = process.env.NODE_ENV === 'production';
     CompressModule,
     HuggingFaceModule,
     CountryModule,
+    SharedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

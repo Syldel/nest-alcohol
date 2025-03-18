@@ -1,16 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+
 import { confirm } from '@clack/prompts';
 
+import { SharedModule } from './shared.module';
 import { ExploreService, IRegionCountry } from './explore.service';
-import { UtilsService } from './utils.service';
-import { JsonService } from './json.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
-import { HttpClientService } from './http-client.service';
 import { CountryService, FilterOptions } from '../country/country.service';
-import { JsonProcessingService } from './json-processing.service';
 
 jest.mock('@clack/prompts', () => ({
   confirm: jest.fn(),
@@ -34,7 +32,7 @@ describe('ExploreService', () => {
     } as unknown as jest.Mocked<AlcoholService>;
 
     app = await Test.createTestingModule({
-      imports: [],
+      imports: [SharedModule],
       providers: [
         {
           provide: AlcoholService,
@@ -42,13 +40,9 @@ describe('ExploreService', () => {
         },
         ConfigService,
         ExploreService,
-        UtilsService,
-        JsonService,
         CompressService,
         HuggingFaceService,
-        HttpClientService,
         CountryService,
-        JsonProcessingService,
       ],
     }).compile();
 

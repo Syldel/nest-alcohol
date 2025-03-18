@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 import { HttpClientService } from '../services/http-client.service';
-import { UtilsService } from '../services';
+import { UtilsService } from '../services/utils.service';
 
 describe('HuggingFaceService', () => {
   let app: TestingModule;

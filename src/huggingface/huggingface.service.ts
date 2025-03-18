@@ -5,7 +5,7 @@ import {
   HttpClientService,
   HttpRequestInit,
 } from '../services/http-client.service';
-import { UtilsService } from '../services';
+import { UtilsService } from '../services/utils.service';
 
 export enum EHFModel {
   DSLIM = 'DSLIM',
