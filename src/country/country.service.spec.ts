@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { CountryService } from './country.service';
 import { CountryModule } from './country.module';
-import { SharedModule } from '../services/shared.module';
+import { SharedModule } from '@services/shared.module';
 
 describe('CountryService', () => {
   let countryService: CountryService;

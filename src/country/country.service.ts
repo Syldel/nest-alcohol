@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { JsonProcessingService } from '../services/json-processing.service';
-import { UtilsService } from '../services/utils.service';
+import { JsonProcessingService } from '@services/json-processing.service';
+import { UtilsService } from '@services/utils.service';
 
 export type Region = {
   name: string;
