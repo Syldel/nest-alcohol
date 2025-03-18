@@ -805,20 +805,24 @@ export class ExploreService implements OnModuleInit {
 
         /* ******************************* */
 
-        if ($('#dp #aplus').length > 1) {
-          this.coloredLog(ELogColor.FgRed, `Several #aplus detected!`);
-          this.stopExploration(true);
-          return;
-        }
-
         let descriptionCompressed: string;
         let descDecompressedText: string;
         let cocktail: boolean;
 
-        if ($('#dp #aplus').length === 1) {
-          const extractedCSSAndHTML = this.extractCSSAndHTML(
-            $('#dp #aplus').html(),
-          );
+        if ($('#dp #aplus').length > 0) {
+          let concatFullDesc = '';
+          $('#dp #aplus').each((index, element) => {
+            console.log(
+              '#dp #aplus /',
+              index,
+              '====>',
+              $(element).html().length,
+            );
+            concatFullDesc += $(element).html();
+          });
+          console.log('concatFullDesc.length:', concatFullDesc.length);
+
+          const extractedCSSAndHTML = this.extractCSSAndHTML(concatFullDesc);
 
           const cleanDescHTML = this.removeScriptsAndComments(
             extractedCSSAndHTML.html,
@@ -860,6 +864,11 @@ export class ExploreService implements OnModuleInit {
             this.stopExploration(true);
             return;
           }
+        } else {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `=> $('#dp #aplus').length === ${$('#dp #aplus').length}!`,
+          );
         }
 
         /* ****************************** DEFINE COUNTRY ************************************* */
