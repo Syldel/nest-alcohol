@@ -145,6 +145,10 @@ QUERY='{ alcohols(filter: {}) { _id asin name } }'
 curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"$QUERY\"}" http://localhost:3000/graphql
 ```
 
+```sh
+curl -X POST -H "Content-Type: application/json" -d "{\"query\": \"{ alcohols(filter: {}) { _id asin name } }\"}" http://localhost:3000/graphql
+```
+
 ## Gzip compression
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Gzip-Logo.svg/220px-Gzip-Logo.svg.png" alt="Gzip Logo" width="100" />
