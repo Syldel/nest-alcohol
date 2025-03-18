@@ -6,8 +6,8 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { decode } from 'entities';
 import { cancel, confirm, isCancel, select, text } from '@clack/prompts';
 
-import { ELogColor, UtilsService } from './utils.service';
-import { JsonService } from './json.service';
+import { ELogColor, UtilsService } from '../services/utils.service';
+import { JsonService } from '../services/json.service';
 
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';

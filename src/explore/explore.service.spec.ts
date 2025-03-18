@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { confirm } from '@clack/prompts';
 
-import { SharedModule } from './shared.module';
+import { SharedModule } from '../services/shared.module';
 import { ExploreService, IRegionCountry } from './explore.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';

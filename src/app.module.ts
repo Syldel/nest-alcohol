@@ -7,7 +7,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ExploreModule } from './services/explore.module';
+import { ExploreModule } from './explore/explore.module';
 import { CompressModule } from './compress/compress.module';
 import { HuggingFaceModule } from './huggingface/huggingface.module';
 import { CountryModule } from './country/country.module';
