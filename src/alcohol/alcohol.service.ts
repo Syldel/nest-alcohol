@@ -15,6 +15,7 @@ import {
   validateCreateAlcoholInput,
 } from './entities/create-alcohol-input.entity';
 import { AlcoholFilterInput } from './entities/alcohol-filter-input.entity';
+import { CountryInfo } from './entities/country-info.entity';
 
 @Injectable()
 export class AlcoholService extends BaseService {
@@ -110,6 +111,30 @@ export class AlcoholService extends BaseService {
       .exec();
 
     return result.map((item) => item._id);
+  }
+
+  async getUniqueCountries(
+    filter?: AlcoholFilterInput,
+  ): Promise<CountryInfo[]> {
+    const matchStage: any = { country: { $exists: true } };
+
+    if (filter?.type) {
+      matchStage.type = filter.type;
+    }
+
+    if (filter?.langCode) {
+      matchStage.langCode = filter.langCode;
+    }
+
+    const result = await this.alcoholModel
+      .aggregate([
+        { $match: matchStage },
+        { $group: { _id: '$country.iso3', country: { $first: '$country' } } },
+        { $sort: { _id: 1 } },
+      ])
+      .exec();
+
+    return result.map((item) => item.country);
   }
 
   async create(input: CreateAlcoholInput): Promise<Alcohol> {

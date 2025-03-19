@@ -2,13 +2,19 @@ import { ObjectType, Field } from '@nestjs/graphql';
 import { Prop } from '@nestjs/mongoose';
 
 @ObjectType()
-export class RegionInfo {
+export class NameTranslations {
   @Field(() => String)
+  en: string;
+
+  @Field(() => String)
+  fr: string;
+}
+
+@ObjectType()
+export class RegionInfo {
+  @Field(() => NameTranslations)
   @Prop({ type: Object })
-  names: {
-    en: string;
-    fr: string;
-  };
+  names: NameTranslations;
 
   @Field(() => String)
   @Prop({ type: String })
@@ -17,12 +23,9 @@ export class RegionInfo {
 
 @ObjectType()
 export class CountryInfo {
-  @Field(() => String)
+  @Field(() => NameTranslations)
   @Prop({ type: Object })
-  names: {
-    en: string;
-    fr: string;
-  };
+  names: NameTranslations;
 
   @Field(() => String)
   @Prop({ type: String })

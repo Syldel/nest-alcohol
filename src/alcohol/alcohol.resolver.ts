@@ -3,6 +3,7 @@ import { AlcoholService } from './alcohol.service';
 import { Alcohol } from './entities/alcohol.entity';
 import { CreateAlcoholInput } from './entities/create-alcohol-input.entity';
 import { AlcoholFilterInput } from './entities/alcohol-filter-input.entity';
+import { CountryInfo } from './entities/country-info.entity';
 
 @Resolver(() => Alcohol)
 export class AlcoholResolver {
@@ -35,6 +36,14 @@ export class AlcoholResolver {
     filter?: AlcoholFilterInput,
   ): Promise<string[]> {
     return this.alcoholService.getUniqueDetailsValues(legend, filter);
+  }
+
+  @Query(() => [CountryInfo])
+  async getUniqueCountries(
+    @Args('filter', { type: () => AlcoholFilterInput, nullable: true })
+    filter?: AlcoholFilterInput,
+  ): Promise<CountryInfo[]> {
+    return this.alcoholService.getUniqueCountries(filter);
   }
 
   @Mutation(() => Alcohol)
