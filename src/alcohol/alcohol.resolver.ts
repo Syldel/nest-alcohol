@@ -46,6 +46,15 @@ export class AlcoholResolver {
     return this.alcoholService.getUniqueCountries(filter);
   }
 
+  @Query(() => [String])
+  async getUniqueDetails(
+    @Args('legend') legend: string,
+    @Args('iso', { nullable: true }) iso?: string,
+    @Args('filter', { nullable: true }) filter?: AlcoholFilterInput,
+  ): Promise<string[]> {
+    return this.alcoholService.getUniqueDetails(legend, iso, filter);
+  }
+
   @Mutation(() => Alcohol)
   async createAlcohol(
     @Args('input') input: CreateAlcoholInput,

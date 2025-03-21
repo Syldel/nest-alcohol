@@ -137,6 +137,60 @@ export class AlcoholService extends BaseService {
     return result.map((item) => item.country);
   }
 
+  /**
+   * Retrieves a distinct list of detail values names from `alcohol.details.value`
+   * based on the provided `legend`, country ISO code, and optional filters.
+   *
+   * @param {string} legend - The legend to filter brands (case-insensitive).
+   * @param {string} [iso] - (Optional) The country ISO code (case-insensitive).
+   * @param {AlcoholFilterInput} [filter] - (Optional) Additional filters for type and langCode.
+   * @returns {Promise<string[]>} A sorted list of unique brand names.
+   *
+   * @example
+   * { getUniqueDetails(legend: "marque", iso: "fr", filter: { type: "whisky", langCode: "fr_FR" }) }
+   */
+  async getUniqueDetails(
+    legend: string,
+    iso?: string,
+    filter?: AlcoholFilterInput,
+  ): Promise<string[]> {
+    if (!legend) {
+      throw new Error("The 'legend' field is required.");
+    }
+
+    const matchStage: any = {
+      'details.legend': { $regex: legend, $options: 'i' },
+    };
+
+    if (iso) {
+      matchStage['country.iso'] = { $regex: `^${iso}$`, $options: 'i' };
+    }
+
+    if (filter?.type) {
+      matchStage.type = filter.type;
+    }
+
+    if (filter?.langCode) {
+      matchStage.langCode = filter.langCode;
+    }
+
+    const result = await this.alcoholModel
+      .aggregate([
+        { $match: matchStage },
+        { $unwind: '$details' },
+        {
+          $match: {
+            'details.legend': { $regex: legend, $options: 'i' },
+          },
+        },
+        { $group: { _id: '$details.value' } },
+        { $sort: { _id: 1 } },
+      ])
+      .exec();
+
+    return result.map((item) => item._id);
+  }
+
   async create(input: CreateAlcoholInput): Promise<Alcohol> {
     const errors = await validateCreateAlcoholInput(input);
     if (errors.length > 0) {
