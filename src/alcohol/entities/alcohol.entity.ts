@@ -85,6 +85,14 @@ export class Alcohol {
   @Field(() => CountryInfo, { nullable: true })
   @Prop({ type: CountryInfo, required: false })
   country?: CountryInfo;
+
+  @Field(() => Date)
+  @Prop()
+  updatedAt: Date;
+
+  @Field(() => Date)
+  @Prop()
+  createdAt: Date;
 }
 
 const AlcoholSchema = SchemaFactory.createForClass(Alcohol);
