@@ -253,7 +253,19 @@ export class ExploreService implements OnModuleInit {
         data: this.links,
       });
 
-      this.coloredLog(ELogColor.FgCyan, `3 minutes left to wait...`);
+      /* ********************************************************* */
+
+      const minWaitTime = 2.5 * 60 * 1000; // 2 minutes 30 secondes
+      const maxWaitTime = 5.5 * 60 * 1000; // 5 minutes 30 secondes
+      const randomWaitTime = Math.floor(
+        minWaitTime + Math.random() * (maxWaitTime - minWaitTime),
+      );
+
+      this.coloredLog(
+        ELogColor.FgCyan,
+        `${(randomWaitTime / 1000 / 60).toFixed(2)} minutes left to wait...`,
+      );
+
       await this.utilsService.waitSeconds(3 * 60 * 1000);
 
       // break;
@@ -291,9 +303,27 @@ export class ExploreService implements OnModuleInit {
     }
 
     this.page = await this.browser.newPage();
-    await this.page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+
+    const userAgents = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.31',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (X11; Linux x86_64; rv:118.0) Gecko/20100101 Firefox/118.0',
+      'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:118.0) Gecko/20100101 Firefox/118.0',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_2) AppleWebKit/537.36 (KHTML, like Gecko) BraveSoftware/1.16.72 Chrome/117.0.0.0 Safari/537.36',
+    ];
+
+    const randomUserAgent =
+      userAgents[Math.floor(Math.random() * userAgents.length)];
+    console.log(
+      'Random User-Agent:',
+      this.coloredText(ELogColor.FgMagenta, randomUserAgent),
     );
+
+    await this.page.setUserAgent(randomUserAgent);
   }
 
   async scraperWebsite(url: string) {
@@ -864,11 +894,6 @@ export class ExploreService implements OnModuleInit {
             this.stopExploration(true);
             return;
           }
-        } else {
-          this.coloredLog(
-            ELogColor.FgRed,
-            `=> $('#dp #aplus').length === ${$('#dp #aplus').length}!`,
-          );
         }
 
         /* ****************************** DEFINE COUNTRY ************************************* */
@@ -964,7 +989,7 @@ export class ExploreService implements OnModuleInit {
       countryNameText.trim(),
       filterOptions,
     );
-    console.log('foundCountries', foundCountries);
+    console.log('foundCountries:', foundCountries);
 
     if (foundCountries.length > 0) {
       country = await this.selectCountry(foundCountries);
@@ -1514,9 +1539,9 @@ export class ExploreService implements OnModuleInit {
     const title = $element.find('a').text().trim();
     const href = $element.find('a').attr('href');
     const thumbSrc = $element.find('img').attr('src');
-    console.log('♦ extractLinkFromTable title:', title);
-    console.log('♦ extractLinkFromTable href:', href);
-    console.log('♦ extractLinkFromTable thumbSrc:', thumbSrc);
+    // console.log('♦ extractLinkFromTable title:', title);
+    // console.log('♦ extractLinkFromTable href:', href);
+    // console.log('♦ extractLinkFromTable thumbSrc:', thumbSrc);
 
     return this.manageLinkAdding(href, thumbSrc, title);
   }
@@ -1559,8 +1584,8 @@ export class ExploreService implements OnModuleInit {
     // );
 
     // console.log('♦ extractLink titre:', titre);
-    console.log('♦ extractLink href:', href);
-    console.log('♦ extractLink thumbSrc:', thumbSrc);
+    // console.log('♦ extractLink href:', href);
+    // console.log('♦ extractLink thumbSrc:', thumbSrc);
 
     return this.manageLinkAdding(href, thumbSrc);
   }
@@ -1588,8 +1613,6 @@ export class ExploreService implements OnModuleInit {
             return null;
           }
         }, thumbnail);
-
-        //console.log('boundingBox', boundingBox);
 
         if (boundingBox) {
           await this.page.mouse.move(boundingBox.x, boundingBox.y);
@@ -1949,6 +1972,19 @@ export class ExploreService implements OnModuleInit {
         `${$('#dp .po-alcohol_type td:nth-child(2)').text()?.trim()}`,
       ),
     );
+
+    if (
+      !$('#wayfinding-breadcrumbs_feature_div').length &&
+      !$('#dp .po-brand td:nth-child(2)').length
+    ) {
+      console.log(
+        cheerio
+          .load(this.optimizeHtml($.html()))
+          .text()
+          ?.replace(/\s+/g, ' ')
+          ?.trim(),
+      );
+    }
 
     return await select({
       message: 'What are we doing?',
