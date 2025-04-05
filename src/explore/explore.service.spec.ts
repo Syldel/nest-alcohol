@@ -1131,4 +1131,132 @@ describe('ExploreService', () => {
       expect(result[1].iso).toBe('IE');
     });
   });
+
+  describe('addExplorationLinks', () => {
+    beforeEach(() => {
+      (exploreService as any).links = [];
+      jest
+        .spyOn(exploreService as any, 'coloredLog')
+        .mockImplementation(() => {});
+    });
+
+    it('should add unique links to the internal list', () => {
+      const links = [
+        {
+          asin: 'A1',
+          url: 'http://example.com/1',
+          explored: false,
+          addToExploration: true,
+        },
+        {
+          asin: 'A2',
+          url: 'http://example.com/2',
+          explored: false,
+          addToExploration: true,
+        },
+      ];
+
+      (exploreService as any).addExplorationLinks(links);
+      expect((exploreService as any).links).toHaveLength(2);
+      expect((exploreService as any).links.map((l) => l.asin)).toEqual([
+        'A1',
+        'A2',
+      ]);
+    });
+
+    it('should ignore links with duplicate ASINs in input array', () => {
+      const links = [
+        {
+          asin: 'A1',
+          url: 'http://example.com/1',
+          explored: false,
+          addToExploration: true,
+        },
+        {
+          asin: 'A1',
+          url: 'http://example.com/1-duplicate',
+          explored: true,
+          addToExploration: true,
+        },
+      ];
+
+      (exploreService as any).addExplorationLinks(links);
+      expect((exploreService as any).links).toHaveLength(1);
+      expect((exploreService as any).links[0].asin).toBe('A1');
+    });
+
+    it('should ignore links that already exist in the internal list', () => {
+      (exploreService as any).links = [
+        { asin: 'A1', url: 'http://existing.com', explored: false },
+      ];
+
+      const links = [
+        {
+          asin: 'A1',
+          url: 'http://new.com',
+          explored: true,
+          addToExploration: true,
+        },
+        {
+          asin: 'A2',
+          url: 'http://example.com/2',
+          explored: false,
+          addToExploration: true,
+        },
+      ];
+
+      (exploreService as any).addExplorationLinks(links);
+      expect((exploreService as any).links).toHaveLength(2);
+      expect(
+        (exploreService as any).links.find((l) => l.asin === 'A1')?.url,
+      ).toBe('http://existing.com');
+    });
+
+    it('should ignore links without addToExploration flag', () => {
+      const links = [
+        {
+          asin: 'A1',
+          url: 'http://example.com/1',
+          explored: false,
+          addToExploration: false,
+        },
+        {
+          asin: 'A2',
+          url: 'http://example.com/2',
+          explored: false,
+          addToExploration: true,
+        },
+      ];
+
+      (exploreService as any).addExplorationLinks(links);
+      expect((exploreService as any).links).toHaveLength(1);
+      expect((exploreService as any).links[0].asin).toBe('A2');
+    });
+
+    it('should ignore null and undefined entries in input', () => {
+      const links = [
+        {
+          asin: 'A1',
+          url: 'http://example.com/1',
+          explored: false,
+          addToExploration: true,
+        },
+        null,
+        undefined,
+        {
+          asin: 'A2',
+          url: 'http://example.com/2',
+          explored: false,
+          addToExploration: true,
+        },
+      ] as any[];
+
+      (exploreService as any).addExplorationLinks(links);
+      expect((exploreService as any).links).toHaveLength(2);
+      expect((exploreService as any).links.map((l) => l.asin)).toEqual([
+        'A1',
+        'A2',
+      ]);
+    });
+  });
 });

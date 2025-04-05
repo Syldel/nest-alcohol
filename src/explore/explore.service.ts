@@ -99,8 +99,39 @@ export class ExploreService implements OnModuleInit {
   private coloredText = (color: ELogColor, text: string) =>
     this.utilsService.coloredText(color, text);
 
+  /**
+   * Adds unique exploration links to the internal links array.
+   * Filters out duplicates based on the ASIN field before adding.
+   *
+   * @param {Link[]} exploLinks - Array of links to be added.
+   */
+  private addExplorationLinks(exploLinks: Link[]) {
+    const validLinks = exploLinks.filter(
+      (link): link is Link =>
+        !!link && !this.links.some((existing) => existing.asin === link.asin),
+    );
+
+    const filtered = new Map<string, Link>();
+    validLinks.forEach((link) => {
+      if (!filtered.has(link.asin)) {
+        filtered.set(link.asin, link);
+      }
+    });
+
+    filtered.forEach((link) => this.addExplorationLink(link));
+  }
+
+  /**
+   * Adds a single link to the internal links array if valid.
+   *
+   * @param {Link} link - The link to be added.
+   */
   private addExplorationLink(link: Link) {
-    if (link && link.addToExploration) {
+    if (
+      link &&
+      link.addToExploration &&
+      !this.links.some((l) => l.asin === link.asin)
+    ) {
       this.coloredLog(ELogColor.FgGreen, `+ Lien ${link.url} ajouté!`);
       const { asin, url, explored } = link;
       this.links.push({ asin, url, explored });
@@ -395,7 +426,7 @@ export class ExploreService implements OnModuleInit {
         pageLinks.push(link);
       });
 
-      pageLinks.forEach((link) => this.addExplorationLink(link));
+      this.addExplorationLinks(pageLinks);
     }
 
     if ($('#dp').length > 0) {
@@ -518,7 +549,7 @@ export class ExploreService implements OnModuleInit {
 
         /* ********************************************************************************* */
 
-        pageLinks.forEach((link) => this.addExplorationLink(link));
+        this.addExplorationLinks(pageLinks);
 
         /* ********************************************************************************* */
 
