@@ -286,8 +286,8 @@ export class ExploreService implements OnModuleInit {
 
       /* ********************************************************* */
 
-      const minWaitTime = 2.5 * 60 * 1000; // 2 minutes 30 secondes
-      const maxWaitTime = 5.5 * 60 * 1000; // 5 minutes 30 secondes
+      const minWaitTime = 1.5 * 60 * 1000; // 1 minute 30 secondes
+      const maxWaitTime = 4 * 60 * 1000; // 4 minutes
       const randomWaitTime = Math.floor(
         minWaitTime + Math.random() * (maxWaitTime - minWaitTime),
       );
@@ -300,6 +300,10 @@ export class ExploreService implements OnModuleInit {
       await this.utilsService.waitSeconds(3 * 60 * 1000);
 
       // break;
+    }
+
+    if (exploredLinks === this.links.length) {
+      this.coloredLog(ELogColor.FgYellow, `✧✧✧ exploration completed! ✧✧✧`);
     }
 
     await this.browser.close();
@@ -469,7 +473,7 @@ export class ExploreService implements OnModuleInit {
         pageLinks.push(link);
       });
 
-      const familyLinks: FamilyLink[] = [];
+      let familyLinks: FamilyLink[] = [];
       $('#dp .apm-tablemodule-table th').each((index, element) => {
         link = this.extractLinkFromTable(index, element);
         pageLinks.push(link);
@@ -482,7 +486,17 @@ export class ExploreService implements OnModuleInit {
           });
         }
       });
+      const fLinksOriginalLength = familyLinks.length;
+      familyLinks = Array.from(
+        new Map(familyLinks.map((item) => [item.asin, item])).values(),
+      );
       console.log('familyLinks:', familyLinks);
+      const fLinksDuplicatesRemoved = fLinksOriginalLength - familyLinks.length;
+      if (fLinksDuplicatesRemoved > 0) {
+        console.log(
+          `Nombre de doublons éliminés dans familyLinks: ${fLinksDuplicatesRemoved}`,
+        );
+      }
 
       const shortlink = await this.getShortlink($);
       if (!shortlink) {
@@ -498,20 +512,11 @@ export class ExploreService implements OnModuleInit {
           .toLowerCase()
           .trim();
 
-        if (!breadStr) {
-          this.coloredLog(ELogColor.FgRed, `breadcrumbs hasn't be found!`);
-          this.stopExploration(true);
-          return;
-        }
-
-        if (
-          breadStr?.length > 0 &&
-          !breadStr.includes(`${this.targetKeyword}s`)
-        ) {
+        if (!breadStr.includes(`${this.targetKeyword}s`)) {
           this.coloredLog(ELogColor.FgRed, `breadcrumbs: ${breadStr}`);
           this.coloredLog(
             ELogColor.FgRed,
-            `${this.targetKeyword}s IS NOT IN THE breadcrumbs > RETURN!!!`,
+            `${this.targetKeyword}s IS NOT IN THE breadcrumbs`,
           );
 
           const answer = await this.showSomeInfosAndPrompt($);
@@ -808,6 +813,38 @@ export class ExploreService implements OnModuleInit {
 
         console.log('details:', details);
 
+        /* ************** AVOID SOME BRANDS ***************** */
+
+        const brandDetail = details.find((detail) =>
+          ['marque', 'brand'].some((keyword) =>
+            detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+          ),
+        );
+        const blacklistBrands = ['RICARD'];
+        if (
+          blacklistBrands.some((keyword) =>
+            brandDetail?.value.toLowerCase().includes(keyword.toLowerCase()),
+          )
+        ) {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `One of the following blacklisted brands have been found: ${brandDetail.value}`,
+          );
+
+          const answer = await this.showSomeInfosAndPrompt($);
+          if (answer === 'stop') {
+            this.stopExploration(true);
+            return;
+          }
+          if (answer === 'skip') {
+            return;
+          }
+          if (isCancel(answer)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+          }
+        }
+
         /* ******************************* */
 
         let productDescription = $('#dp #productDescription').html()?.trim();
@@ -873,15 +910,8 @@ export class ExploreService implements OnModuleInit {
         if ($('#dp #aplus').length > 0) {
           let concatFullDesc = '';
           $('#dp #aplus').each((index, element) => {
-            console.log(
-              '#dp #aplus /',
-              index,
-              '====>',
-              $(element).html().length,
-            );
             concatFullDesc += $(element).html();
           });
-          console.log('concatFullDesc.length:', concatFullDesc.length);
 
           const extractedCSSAndHTML = this.extractCSSAndHTML(concatFullDesc);
 
@@ -927,7 +957,11 @@ export class ExploreService implements OnModuleInit {
           }
         }
 
-        /* ****************************** DEFINE COUNTRY ************************************* */
+        /* ****************************** CHECK BRAND NAME ************************************* */
+
+        details = await this.checkBrandName(details);
+
+        /* ****************************** DEFINE COUNTRY *************************************** */
 
         // const country = await this.extractCountry(
         //   productTitle,
@@ -993,6 +1027,31 @@ export class ExploreService implements OnModuleInit {
     }
   }
 
+  private async checkBrandName(details: Details[]): Promise<Details[]> {
+    const brandDetail = details.find((detail) =>
+      ['marque', 'brand'].some((keyword) =>
+        detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+      ),
+    );
+
+    if (!brandDetail || !brandDetail.value) {
+      const brandNameText = await text({
+        message: 'Enter a brand name:',
+      });
+      if (isCancel(brandNameText)) {
+        cancel('Operation cancelled.');
+        process.exit(0);
+      }
+      if (brandNameText?.length > 1) {
+        details.unshift({
+          legend: 'Marque',
+          value: brandNameText.trim(),
+        });
+      }
+    }
+    return details;
+  }
+
   private async enterCountryName() {
     let country: CountryInfo;
     const countryNameText = await text({
@@ -1036,7 +1095,9 @@ export class ExploreService implements OnModuleInit {
     description: { product: string; manufacturer?: string };
   }) {
     const brandName = alcohol.details.find((detail) =>
-      detail.legend.toLowerCase().includes('marque'),
+      ['marque', 'brand'].some((keyword) =>
+        detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+      ),
     )?.value;
     const countryName = alcohol.details.find(
       (detail) =>
@@ -1088,15 +1149,17 @@ export class ExploreService implements OnModuleInit {
 
     if (country) {
       const foundCountryInJson = this.countries.some((jsonCountry) => {
+        const countryNameEn = country.names.en?.toLowerCase().trim();
+        const countryNameFr = country.names.fr?.toLowerCase().trim();
+
         return (
-          jsonCountry.country.en
-            .toLowerCase()
-            .trim()
-            .includes(country.names.en.toLowerCase().trim()) ||
-          jsonCountry.country.fr
-            .toLowerCase()
-            .trim()
-            .includes(country.names.fr.toLowerCase().trim())
+          (countryNameEn &&
+            jsonCountry.country.en
+              .toLowerCase()
+              .trim()
+              .includes(countryNameEn)) ||
+          (countryNameFr &&
+            jsonCountry.country.fr.toLowerCase().trim().includes(countryNameFr))
         );
       });
 
@@ -1116,7 +1179,7 @@ export class ExploreService implements OnModuleInit {
               fr: country.names.fr,
             },
             whiskyDistilleries: [],
-            brands: [brandName.trim()],
+            brands: brandName ? [brandName.trim()] : [],
           });
 
           await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
@@ -1127,47 +1190,49 @@ export class ExploreService implements OnModuleInit {
         }
       }
 
-      const foundBrandInJson = this.countries.some((jsonCountry) => {
-        return jsonCountry.brands?.some((brand) => {
-          return brand
-            .toLowerCase()
-            .trim()
-            ?.includes(brandName.toLowerCase().trim());
+      if (brandName) {
+        const foundBrandInJson = this.countries.some((jsonCountry) => {
+          return jsonCountry.brands?.some((brand) => {
+            return brand
+              .toLowerCase()
+              .trim()
+              ?.includes(brandName.toLowerCase().trim());
+          });
         });
-      });
 
-      if (!foundBrandInJson) {
-        const saveConfirmation = await confirm({
-          message: `Save the brand name "${brandName}" for "${country.names.en}" in json?`,
-        });
-        if (isCancel(saveConfirmation)) {
-          cancel('Operation cancelled.');
-          process.exit(0);
-        }
-        if (saveConfirmation) {
-          this.countries = this.countries.map((jsonCountry) => {
-            if (
-              jsonCountry.country.en.toLowerCase() ===
-                country.names.en.toLowerCase() ||
-              jsonCountry.country.fr.toLowerCase() ===
-                country.names.fr.toLowerCase()
-            ) {
-              if (!jsonCountry.brands) {
-                jsonCountry.brands = [];
+        if (!foundBrandInJson) {
+          const saveConfirmation = await confirm({
+            message: `Save the brand name "${brandName}" for "${country.names.en}" in json?`,
+          });
+          if (isCancel(saveConfirmation)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+          }
+          if (saveConfirmation) {
+            this.countries = this.countries.map((jsonCountry) => {
+              if (
+                jsonCountry.country.en.toLowerCase() ===
+                  country.names.en.toLowerCase() ||
+                jsonCountry.country.fr.toLowerCase() ===
+                  country.names.fr.toLowerCase()
+              ) {
+                if (!jsonCountry.brands) {
+                  jsonCountry.brands = [];
+                }
+                jsonCountry.brands.push(brandName.trim());
               }
-              jsonCountry.brands.push(brandName.trim());
-            }
-            return jsonCountry;
-          });
+              return jsonCountry;
+            });
 
-          await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
-            data: this.countries,
-          });
+            await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
+              data: this.countries,
+            });
 
-          await this.utilsService.waitSeconds(4000);
-        } else {
-          console.log('\nChoose a country to return');
-          return await this.enterCountryName();
+            await this.utilsService.waitSeconds(2000);
+          } else {
+            console.log('\nChoose a country to return');
+            return await this.enterCountryName();
+          }
         }
       }
     }
@@ -1324,14 +1389,16 @@ export class ExploreService implements OnModuleInit {
         prompt,
         EHFModel.MISTRAL,
       );
-      const generatedText = mistralResult[0]?.generated_text;
-      const optimizedAnswerText = generatedText.replace(prompt, '');
-      const mistralCountries: CountryInfo[] =
-        this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
-      console.log('mistralCountries?.length:', mistralCountries?.length);
-      finalCountry = mistralCountries.find(
-        (country) => Object.keys(country).length > 0,
-      );
+      if (mistralResult) {
+        const generatedText = mistralResult[0]?.generated_text;
+        const optimizedAnswerText = generatedText.replace(prompt, '');
+        const mistralCountries: CountryInfo[] =
+          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+        console.log('mistralCountries?.length:', mistralCountries?.length);
+        finalCountry = mistralCountries.find(
+          (country) => Object.keys(country).length > 0,
+        );
+      }
 
       console.log('country (Mistral AI):', finalCountry);
 
@@ -1347,7 +1414,7 @@ export class ExploreService implements OnModuleInit {
           return;
         }
       } else {
-        console.log('mistralResult:', generatedText);
+        console.log('mistralResult:', mistralResult);
         this.coloredLog(ELogColor.FgRed, `Mistral country is null!`);
         return;
       }
@@ -1710,7 +1777,7 @@ export class ExploreService implements OnModuleInit {
     } else {
       const buttonId = 'amzn-ss-get-link-button';
       const dropdownId = 'amzn-ss-tracking-id-dropdown-text';
-      const selectTargetKey = `alcoholwhiskies-21`;
+      const selectTargetKey = `relaxedalcoho-21`;
       const getLinkButtonId = 'amzn-ss-get-link-btn-text-announce';
       const shortlinkTextarea = 'amzn-ss-text-shortlink-textarea';
 
@@ -1981,14 +2048,72 @@ export class ExploreService implements OnModuleInit {
     return this.getFirstValidElement($, selector, type, index + 1);
   }
 
+  public async enterCaptcha($: cheerio.CheerioAPI) {
+    const imgSrc = $('img').attr('src');
+    console.log('imgSrc:', imgSrc); // Keep this log!
+
+    const captchaText = await text({
+      message: 'Enter captcha:',
+    });
+    if (isCancel(captchaText)) {
+      cancel('Operation cancelled.');
+      process.exit(0);
+    }
+
+    console.log('- set the value of input', $('#captchacharacters').length);
+    $('#captchacharacters').val(captchaText.trim());
+
+    await this.utilsService.waitSeconds(1000);
+
+    console.log('- button click', $('button[type="submit"]').length);
+    await this.page.click('button[type="submit"]');
+
+    await this.utilsService.waitSeconds(4000);
+
+    const newUrl = this.page.url();
+    console.log('- newUrl', newUrl);
+
+    // await this.page.goto(newUrl);
+    // ... extraction des données avec Puppeteer ...
+
+    console.log('- refresh $');
+    // Récupérer le contenu HTML mis à jour
+    const htmlUpdated = await this.page.content();
+    $ = cheerio.load(htmlUpdated);
+
+    await this.utilsService.waitSeconds(2000);
+
+    console.log('- check result');
+    // Vérifier le résultat après modification
+    const updatedHtml = $.html();
+    console.log(updatedHtml);
+
+    console.log('Wait 60s...');
+    // TODO: REMOVE THIS
+    await this.utilsService.waitSeconds(60 * 1000);
+  }
+
   public async showSomeInfosAndPrompt($: cheerio.CheerioAPI) {
+    let negativeCriteria = 0;
+
+    const dpClass = $('#dp').attr('class') || '';
+    console.log('#dp class:', this.coloredText(ELogColor.FgYellow, dpClass));
+    if (!dpClass.includes('alcoholic_beverage')) {
+      negativeCriteria++;
+    }
+
+    let breadText = $('#wayfinding-breadcrumbs_feature_div').text() || '';
+
     console.log(
       'breadcrumbs:',
-      this.coloredText(
-        ELogColor.FgYellow,
-        `${$('#wayfinding-breadcrumbs_feature_div').text()}`,
-      ),
+      this.coloredText(ELogColor.FgYellow, `${breadText}`),
     );
+
+    breadText = breadText.toLowerCase();
+    if (!breadText.includes(`${this.targetKeyword}s`)) {
+      negativeCriteria++;
+    }
+
     console.log(
       'brand:',
       this.coloredText(
@@ -1996,26 +2121,106 @@ export class ExploreService implements OnModuleInit {
         `${$('#dp .po-brand td:nth-child(2)').text()?.trim()}`,
       ),
     );
+
+    const alcoholTypeText = $('#dp .po-alcohol_type td:nth-child(2)')
+      .text()
+      ?.trim();
     console.log(
       'alcohol_type:',
+      this.coloredText(ELogColor.FgYellow, `${alcoholTypeText}`),
+    );
+
+    if (!alcoholTypeText) {
+      negativeCriteria++;
+    }
+
+    console.log(
+      'Negative Criteria:',
       this.coloredText(
-        ELogColor.FgYellow,
-        `${$('#dp .po-alcohol_type td:nth-child(2)').text()?.trim()}`,
+        ELogColor.FgRed,
+        `${negativeCriteria} ${'⚫ '.repeat(negativeCriteria)}`,
       ),
     );
 
+    let autoSkip = false;
     if (
+      !$('#dp').length &&
       !$('#wayfinding-breadcrumbs_feature_div').length &&
       !$('#dp .po-brand td:nth-child(2)').length
     ) {
-      console.log(
-        cheerio
-          .load(this.optimizeHtml($.html()))
-          .text()
-          ?.replace(/\s+/g, ' ')
-          ?.trim(),
-      );
+      const justContentText = cheerio
+        .load(this.optimizeHtml($.html()))
+        .text()
+        ?.replace(/\s+/g, ' ')
+        ?.trim();
+      console.log('Just text:', justContentText);
+      if (justContentText.includes('Page introuvable')) {
+        autoSkip = true;
+      } else if (justContentText.includes('robot')) {
+        console.log($.html());
+        await this.enterCaptcha($);
+        return 'continue';
+      }
+    } else if (negativeCriteria >= 3) {
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('gins') &&
+      alcoholTypeText.toLowerCase().includes('gin')
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Gin detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('rhums') &&
+      alcoholTypeText.toLowerCase().includes('rhum')
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Rhum detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('vodkas') &&
+      alcoholTypeText.toLowerCase().includes('vodka')
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Vodka detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('tequilas') &&
+      alcoholTypeText.toLowerCase().includes('tequila')
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Tequila detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('cognac') &&
+      (alcoholTypeText.toLowerCase().includes('cognac') ||
+        alcoholTypeText.toLowerCase().includes('brandy'))
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Cognac detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('armagnac') &&
+      (alcoholTypeText.toLowerCase().includes('armagnac') ||
+        alcoholTypeText.toLowerCase().includes('brandy'))
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Armagnac detected!');
+      autoSkip = true;
+    } else if (
+      breadText.toLowerCase().endsWith('liqueurs') &&
+      alcoholTypeText.toLowerCase().includes('liqueur')
+    ) {
+      this.coloredLog(ELogColor.FgCyan, '✨ Liqueur detected!');
+      autoSkip = true;
     }
+
+    if (autoSkip) {
+      // AUTO SKIP
+      this.coloredLog(ELogColor.FgMagenta, '>>> AUTO SKIP >>>');
+      await this.utilsService.waitSeconds(3000);
+      return 'skip';
+    }
+
+    // Get the user agent using page.evaluate
+    const userAgentFromPage = await this.page.evaluate(
+      () => navigator.userAgent,
+    );
+    console.log('User-Agent:', userAgentFromPage);
 
     return await select({
       message: 'What are we doing?',
