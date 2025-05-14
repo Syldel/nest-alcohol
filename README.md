@@ -297,6 +297,51 @@ Pour utiliser Mongosh avec Atlas Stream Processing, assurez-vous d'utiliser Mong
 * Documentation MongoDB : [https://docs.mongodb.com/](https://docs.mongodb.com/)
 * Documentation Mongosh : [https://www.mongodb.com/docs/mongodb-shell/](https://www.mongodb.com/docs/mongodb-shell/)
 
+## 🔍 Récupération des Cookies JSON depuis Chrome
+
+Cette méthode permet d'extraire facilement les cookies d'un domaine actif dans Google Chrome au format JSON, directement depuis la console de développement (DevTools).
+
+### 🧰 Prérequis
+
+- Google Chrome ou Chromium.
+- Accès à la console de développement (`F12` ou clic-droit > "Inspecter").
+- L'onglet **Application** pour voir les cookies.
+- La fonction `getCookiesDetails()` copiée dans la console.
+
+### 🛠️ Fonction `getCookiesDetails()`
+
+```javascript
+function getCookiesDetails() {
+    let cookies = document.cookie.split("; ");
+    let cookieDetails = [];
+
+    cookies.forEach(function(cookie) {
+        let [name, value] = cookie.split("=");
+
+        let cookieObj = {
+            name: name,
+            value: value,
+            domain: document.domain,
+            path: "/",
+            secure: location.protocol === 'https:',
+            httpOnly: false,
+            session: false,
+            expirationDate: null
+        };
+
+        if (!document.cookie.includes("expires")) {
+            cookieObj.session = true;
+        }
+
+        cookieDetails.push(cookieObj);
+    });
+
+    console.log(JSON.stringify(cookieDetails, null, 2));
+}
+
+getCookiesDetails();
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
