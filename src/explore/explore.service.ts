@@ -40,11 +40,23 @@ type Link = {
   addToExploration?: boolean;
 };
 
+enum ESpiritType {
+  WHISKY = 'whisky',
+  RHUM = 'rhum',
+  GIN = 'gin',
+  COGNAC = 'cognac',
+  TEQUILA = 'tequila',
+  VODKA = 'vodka',
+}
+
+// Type avec toutes les clés optionnelles
+type BrandsMap = Partial<Record<ESpiritType, string[]>>;
+
 export interface IRegionCountry {
   regions?: string[];
   nationalities: string[];
   whiskyDistilleries: string[];
-  brands?: string[];
+  brands: BrandsMap;
   country: {
     en: string;
     fr: string;
@@ -61,7 +73,7 @@ export class ExploreService implements OnModuleInit {
   private countries: IRegionCountry[];
   private jsonCountriesPath = `jsons/countries.json`;
 
-  private targetKeyword = 'whisky';
+  private targetKeyword = ESpiritType.WHISKY;
   private langCountryCode = 'fr_FR';
 
   private _stopExploration = false;
@@ -532,7 +544,8 @@ export class ExploreService implements OnModuleInit {
             process.exit(0);
           }
 
-          const newBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›Whiskys`;
+          const capitalizeBreadTarget = `${this.targetKeyword[0].toUpperCase()}${this.targetKeyword.slice(1)}s`;
+          const newBreadStr = `Epicerie›Bières, vins et spiritueux›Spiritueux›${capitalizeBreadTarget}`;
           const replaceBreadcrumbs = await confirm({
             message: `Do you want to replace breadcrumbs with '${newBreadStr}'`,
           });
@@ -1172,6 +1185,9 @@ export class ExploreService implements OnModuleInit {
           process.exit(0);
         }
         if (saveConfirmation) {
+          const brands: BrandsMap = {};
+          brands[this.targetKeyword] = brandName ? [brandName.trim()] : [];
+
           this.countries.push({
             nationalities: [],
             country: {
@@ -1179,7 +1195,7 @@ export class ExploreService implements OnModuleInit {
               fr: country.names.fr,
             },
             whiskyDistilleries: [],
-            brands: brandName ? [brandName.trim()] : [],
+            brands,
           });
 
           await this.jsonService.writeJsonFile(this.jsonCountriesPath, {
@@ -1192,12 +1208,15 @@ export class ExploreService implements OnModuleInit {
 
       if (brandName) {
         const foundBrandInJson = this.countries.some((jsonCountry) => {
-          return jsonCountry.brands?.some((brand) => {
-            return brand
-              .toLowerCase()
-              .trim()
-              ?.includes(brandName.toLowerCase().trim());
-          });
+          return (
+            jsonCountry.brands &&
+            jsonCountry.brands[this.targetKeyword]?.some((brand) => {
+              return brand
+                .toLowerCase()
+                .trim()
+                ?.includes(brandName.toLowerCase().trim());
+            })
+          );
         });
 
         if (!foundBrandInJson) {
@@ -1217,9 +1236,12 @@ export class ExploreService implements OnModuleInit {
                   country.names.fr.toLowerCase()
               ) {
                 if (!jsonCountry.brands) {
-                  jsonCountry.brands = [];
+                  jsonCountry.brands = {};
                 }
-                jsonCountry.brands.push(brandName.trim());
+                if (!jsonCountry.brands[this.targetKeyword]) {
+                  jsonCountry.brands[this.targetKeyword] = [];
+                }
+                jsonCountry.brands[this.targetKeyword].push(brandName.trim());
               }
               return jsonCountry;
             });
@@ -1446,9 +1468,11 @@ export class ExploreService implements OnModuleInit {
       distilleryMatchFound = mapping.whiskyDistilleries?.some((distillery) =>
         textLower.includes(distillery.toLowerCase()),
       );
-      brandsMatchFound = mapping.brands?.some((brand) =>
-        textLower.includes(brand.toLowerCase()),
-      );
+      brandsMatchFound =
+        mapping.brands &&
+        mapping.brands[this.targetKeyword]?.some((brand) =>
+          textLower.includes(brand.toLowerCase()),
+        );
 
       if (
         regionMatchFound ||
@@ -1481,7 +1505,7 @@ export class ExploreService implements OnModuleInit {
             );
           }
         });
-        mapping.brands?.some((brand) => {
+        mapping.brands?.[this.targetKeyword]?.some((brand) => {
           if (textLower.includes(brand.toLowerCase())) {
             console.log(' brands:', textLower, '=>', brand.toLowerCase());
           }

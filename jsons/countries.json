@@ -24,32 +24,34 @@
         "Shinobu",
         "Togouchi"
       ],
-      "brands": [
-        "Togouchi",
-        "Akashi",
-        "Nikka",
-        "Koriyama Whisky",
-        "Yamazakura",
-        "Suntory",
-        "Mars",
-        "Toki",
-        "Yumeko",
-        "Hibiki",
-        "Fujimi",
-        "Kamiki",
-        "The Kurayoshi",
-        "Tenjaku",
-        "Sakurao",
-        "Ichiro Malt & Grain",
-        "TOKINOKA",
-        "The Yamazaki",
-        "Matsui",
-        "Hinotori",
-        "Amahagan",
-        "Hakushu",
-        "Kirin",
-        "Hatozaki"
-      ]
+      "brands": {
+        "whisky": [
+          "Togouchi",
+          "Akashi",
+          "Nikka",
+          "Koriyama Whisky",
+          "Yamazakura",
+          "Suntory",
+          "Mars",
+          "Toki",
+          "Yumeko",
+          "Hibiki",
+          "Fujimi",
+          "Kamiki",
+          "The Kurayoshi",
+          "Tenjaku",
+          "Sakurao",
+          "Ichiro Malt & Grain",
+          "TOKINOKA",
+          "The Yamazaki",
+          "Matsui",
+          "Hinotori",
+          "Amahagan",
+          "Hakushu",
+          "Kirin",
+          "Hatozaki"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -85,126 +87,129 @@
         "Glenmorangie",
         "Auchentoshan"
       ],
-      "brands": [
-        "ABERLOUR",
-        "William Lawson's",
-        "J&B",
-        "Ballantine's",
-        "JOHNNIE WALKER",
-        "Cardhu",
-        "The Famous Grouse",
-        "LONG_JOHN",
-        "Dalwhinnie",
-        "Sir Edward's",
-        "Sir Edwards",
-        "Tamnavulin",
-        "Chivas Regal",
-        "William Peel",
-        "Glen Turner",
-        "Aberfeldy",
-        "Caol Ila",
-        "Knockando",
-        "William Grant & Sons",
-        "Glenmorangie",
-        "Grant's",
-        "Black Bottle",
-        "Haig Club",
-        "Laphroaig",
-        "Arran",
-        "The Singleton",
-        "Lagavulin",
-        "Black & White",
-        "Glenkinchie",
-        "TALISKER",
-        "Mortlach",
-        "Ardbeg",
-        "Kilchoman",
-        "MISTER PEAT",
-        "Douglas Laing",
-        "Jura",
-        "OSA FINE SPIRITS",
-        "Royal Salute",
-        "The Glenlivet",
-        "Dalmore",
-        "Bowmore",
-        "BELL'S",
-        "Label 5",
-        "The Claymore",
-        "Clan Campbell",
-        "John Barr",
-        "Islay Mist",
-        "THE DEACON",
-        "Finlaggan",
-        "Big Peat",
-        "Ledaig",
-        "Peat's Beast",
-        "Hunter Laing",
-        "Ileach",
-        "The Deveron",
-        "Speyburn",
-        "CRAGGANMORE",
-        "Auchentoshan",
-        "NAKED MALT",
-        "Tomatin Distillery",
-        "Shackleton",
-        "Glen Garioch",
-        "PULTENEY",
-        "Glenfiddich",
-        "Macallan",
-        "THE BALVENIE",
-        "THE WOODSMAN",
-        "Bruichladdich",
-        "Cutty Sark",
-        "Isle of Harris",
-        "BALLECHIN",
-        "Compass Box",
-        "Glen Elgin",
-        "Whyte & Mackay",
-        "Octomore",
-        "Smokehead",
-        "Bunnahabhain",
-        "Fettercairn",
-        "MAC-TALLA",
-        "An Cnoc",
-        "HANKEY BANNISTER",
-        "Dimple",
-        "White Horse",
-        "Old Parr",
-        "Dewar's",
-        "Benromach",
-        "Old Ballantruan",
-        "Benriach",
-        "Port Askaig",
-        "Ardmore",
-        "Port Charlotte",
-        "Deanston",
-        "Scapa",
-        "Scallywag",
-        "Teacher's",
-        "Glengoyne",
-        "Clynelish",
-        "Glendronach",
-        "LOCH LOMOND",
-        "Highland Park",
-        "1770 Glasgow",
-        "Glenallachie",
-        "Kingsbarns",
-        "Glen Grant",
-        "Glen Moray",
-        "Waterproof Whisky",
-        "Lauder's",
-        "Monkey Shoulder",
-        "Chivas Brothers",
-        "The Tomatin Distillery Co. Ltd",
-        "Buchanan's",
-        "Signatory Vintage",
-        "Oban",
-        "Balblair",
-        "Craigellachie",
-        "Tobermory",
-        "Royal Lochnagar",
-        "Vat 69"
-      ]
+      "brands": {
+        "whisky": [
+          "ABERLOUR",
+          "William Lawson's",
+          "J&B",
+          "Ballantine's",
+          "JOHNNIE WALKER",
+          "Cardhu",
+          "The Famous Grouse",
+          "LONG_JOHN",
+          "Dalwhinnie",
+          "Sir Edward's",
+          "Sir Edwards",
+          "Tamnavulin",
+          "Chivas Regal",
+          "William Peel",
+          "Glen Turner",
+          "Aberfeldy",
+          "Caol Ila",
+          "Knockando",
+          "William Grant & Sons",
+          "Glenmorangie",
+          "Grant's",
+          "Black Bottle",
+          "Haig Club",
+          "Laphroaig",
+          "Arran",
+          "The Singleton",
+          "Lagavulin",
+          "Black & White",
+          "Glenkinchie",
+          "TALISKER",
+          "Mortlach",
+          "Ardbeg",
+          "Kilchoman",
+          "MISTER PEAT",
+          "Douglas Laing",
+          "Jura",
+          "OSA FINE SPIRITS",
+          "Royal Salute",
+          "The Glenlivet",
+          "Dalmore",
+          "Bowmore",
+          "BELL'S",
+          "Label 5",
+          "The Claymore",
+          "Clan Campbell",
+          "John Barr",
+          "Islay Mist",
+          "THE DEACON",
+          "Finlaggan",
+          "Big Peat",
+          "Ledaig",
+          "Peat's Beast",
+          "Hunter Laing",
+          "Ileach",
+          "The Deveron",
+          "Speyburn",
+          "CRAGGANMORE",
+          "Auchentoshan",
+          "NAKED MALT",
+          "Tomatin Distillery",
+          "Shackleton",
+          "Glen Garioch",
+          "PULTENEY",
+          "Glenfiddich",
+          "Macallan",
+          "THE BALVENIE",
+          "THE WOODSMAN",
+          "Bruichladdich",
+          "Cutty Sark",
+          "Isle of Harris",
+          "BALLECHIN",
+          "Compass Box",
+          "Glen Elgin",
+          "Whyte & Mackay",
+          "Octomore",
+          "Smokehead",
+          "Bunnahabhain",
+          "Fettercairn",
+          "MAC-TALLA",
+          "An Cnoc",
+          "HANKEY BANNISTER",
+          "Dimple",
+          "White Horse",
+          "Old Parr",
+          "Dewar's",
+          "Benromach",
+          "Old Ballantruan",
+          "Benriach",
+          "Port Askaig",
+          "Ardmore",
+          "Port Charlotte",
+          "Deanston",
+          "Scapa",
+          "Scallywag",
+          "Teacher's",
+          "Glengoyne",
+          "Clynelish",
+          "Glendronach",
+          "LOCH LOMOND",
+          "Highland Park",
+          "1770 Glasgow",
+          "Glenallachie",
+          "Kingsbarns",
+          "Glen Grant",
+          "Glen Moray",
+          "Waterproof Whisky",
+          "Lauder's",
+          "Monkey Shoulder",
+          "Chivas Brothers",
+          "The Tomatin Distillery Co. Ltd",
+          "Buchanan's",
+          "Signatory Vintage",
+          "Oban",
+          "Balblair",
+          "Craigellachie",
+          "Tobermory",
+          "Royal Lochnagar",
+          "Vat 69",
+          "Tamdhu"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -223,9 +228,11 @@
         "Penderyn",
         "Aber Falls"
       ],
-      "brands": [
-        "Penderyn"
-      ]
+      "brands": {
+        "whisky": [
+          "Penderyn"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -248,36 +255,44 @@
         "Kilbeggan",
         "Powers"
       ],
-      "brands": [
-        "Roe & Co",
-        "Jameson",
-        "Connemara",
-        "GreenSpot",
-        "Powers",
-        "The Dubliner",
-        "Tullamore Dew",
-        "Proper No. Twelve",
-        "LAMBAY WHISKEY",
-        "Redbreast",
-        "METHOD AND MADNESS",
-        "Kilbeggan",
-        "Waterford",
-        "Bushmills",
-        "Teeling",
-        "DRUMSHANBO",
-        "Paddy",
-        "The Tyrconnell",
-        "THE SEXTON",
-        "Dingle",
-        "The Irishman",
-        "West Cork",
-        "THE POGUES",
-        "Hinch",
-        "BLACKS",
-        "FLAMING PIG",
-        "Hyde",
-        "Sliabh Liag Distillery"
-      ]
+      "brands": {
+        "whisky": [
+          "Roe & Co",
+          "Jameson",
+          "Connemara",
+          "GreenSpot",
+          "Powers",
+          "The Dubliner",
+          "Tullamore Dew",
+          "Proper No. Twelve",
+          "LAMBAY WHISKEY",
+          "Redbreast",
+          "METHOD AND MADNESS",
+          "Kilbeggan",
+          "Waterford",
+          "Bushmills",
+          "Teeling",
+          "DRUMSHANBO",
+          "Paddy",
+          "The Tyrconnell",
+          "THE SEXTON",
+          "Dingle",
+          "The Irishman",
+          "West Cork",
+          "THE POGUES",
+          "Hinch",
+          "BLACKS",
+          "FLAMING PIG",
+          "Hyde",
+          "Sliabh Liag Distillery",
+          "Writers Tears",
+          "Irish Mist",
+          "Grace O'Malley",
+          "Born Irish",
+          "Yellow Spot",
+          "Rammstein"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -302,47 +317,49 @@
         "Armorik",
         "Domaine Mavela"
       ],
-      "brands": [
-        "Bellevoye",
-        "BERCLOUX",
-        "Deloyre",
-        "Fondaudège",
-        "BEAUCHAMP",
-        "Charmeval by Bruant",
-        "LE CLUB DES CONNAISSEURS degustation de spiritueux",
-        "Brenne",
-        "ABARSAC",
-        "flakon.",
-        "Evadé",
-        "YEUN ELEZ",
-        "EDDU",
-        "Gwalarn",
-        "NELCIUS",
-        "CORTOISIE",
-        "ARMORIK",
-        "NINKASI",
-        "Maison Benjamin KUENTZ",
-        "Laferté",
-        "G. Rozelieures",
-        "Arlett",
-        "Distillerie Hepp",
-        "Maison Lacroix",
-        "Version Française",
-        "Artesia",
-        "MARCEL CABELIER",
-        "Bache Gabrielsen",
-        "AUGUSTIN LEFORT",
-        "Distillerie du Perigord",
-        "P&M",
-        "Welche's Whisky",
-        "HERIOSE",
-        "Chateau du Breuil",
-        "Château du Breuil",
-        "QUAI SUD",
-        "Fontagard",
-        "Maison Turin",
-        "Aikan"
-      ]
+      "brands": {
+        "whisky": [
+          "Bellevoye",
+          "BERCLOUX",
+          "Deloyre",
+          "Fondaudège",
+          "BEAUCHAMP",
+          "Charmeval by Bruant",
+          "LE CLUB DES CONNAISSEURS degustation de spiritueux",
+          "Brenne",
+          "ABARSAC",
+          "flakon.",
+          "Evadé",
+          "YEUN ELEZ",
+          "EDDU",
+          "Gwalarn",
+          "NELCIUS",
+          "CORTOISIE",
+          "ARMORIK",
+          "NINKASI",
+          "Maison Benjamin KUENTZ",
+          "Laferté",
+          "G. Rozelieures",
+          "Arlett",
+          "Distillerie Hepp",
+          "Maison Lacroix",
+          "Version Française",
+          "Artesia",
+          "MARCEL CABELIER",
+          "Bache Gabrielsen",
+          "AUGUSTIN LEFORT",
+          "Distillerie du Perigord",
+          "P&M",
+          "Welche's Whisky",
+          "HERIOSE",
+          "Chateau du Breuil",
+          "Château du Breuil",
+          "QUAI SUD",
+          "Fontagard",
+          "Maison Turin",
+          "Aikan"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -354,22 +371,39 @@
         "fr": "Canada"
       },
       "whiskyDistilleries": [
-        "Canadian Club",
         "Crown Royal",
-        "Lot No. 40",
         "Alberta Premium",
+        "Glenora"
+      ],
+      "brands": {
+        "whisky": [
+          "Crown Royal",
+          "Sam Barton",
+          "Signal Hill",
+          "Glen Breton"
+        ]
+      }
+    },
+    {
+      "nationalities": [],
+      "country": {
+        "en": "Ontario",
+        "fr": "Ontario"
+      },
+      "whiskyDistilleries": [
+        "Canadian Club",
+        "Lot No. 40",
         "Forty Creek",
         "Still Waters",
-        "Glenora",
         "Wayne Gretzky Estates Craft"
       ],
-      "brands": [
-        "Canadian Club",
-        "Crown Royal",
-        "Sam Barton",
-        "Signal Hill",
-        "Glen Breton"
-      ]
+      "brands": {
+        "whisky": [
+          "Canadian Club",
+          "J.P. Wiser's",
+          "Lot 40"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -387,9 +421,11 @@
         "Spirit of Hven",
         "Smögen Whisky"
       ],
-      "brands": [
-        "Mackmyra"
-      ]
+      "brands": {
+        "whisky": [
+          "Mackmyra"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -428,10 +464,12 @@
         "Holy",
         "Jade Supremacy"
       ],
-      "brands": [
-        "Kavalan",
-        "Yushan"
-      ]
+      "brands": {
+        "whisky": [
+          "Kavalan",
+          "Yushan"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -460,10 +498,12 @@
         "Whipper Snapper",
         "The Gospel"
       ],
-      "brands": [
-        "STARWARD",
-        "HELLYERS ROAD"
-      ]
+      "brands": {
+        "whisky": [
+          "STARWARD",
+          "HELLYERS ROAD"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -500,7 +540,12 @@
         "Cardrona",
         "Lammermoor",
         "Waiheke Whisky"
-      ]
+      ],
+      "brands": {
+        "whisky": [
+          "Scapegrace"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -515,9 +560,11 @@
         "Drayman's Brewery",
         "Incendo"
       ],
-      "brands": [
-        "Bain's Cape Mountain Whisky"
-      ]
+      "brands": {
+        "whisky": [
+          "Bain's Cape Mountain Whisky"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -543,9 +590,11 @@
         "Blackwood",
         "Rabel Berghof"
       ],
-      "brands": [
-        "Slyrs"
-      ]
+      "brands": {
+        "whisky": [
+          "Slyrs"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -568,11 +617,13 @@
         "Pune",
         "Karnataka State Beverages Corporation"
       ],
-      "brands": [
-        "Amrut",
-        "Paul John",
-        "Rampur"
-      ]
+      "brands": {
+        "whisky": [
+          "Amrut",
+          "Paul John",
+          "Rampur"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -611,10 +662,12 @@
         "Kadashi",
         "De Bronckhorst"
       ],
-      "brands": [
-        "By The Dutch",
-        "Zuidam"
-      ]
+      "brands": {
+        "whisky": [
+          "By The Dutch",
+          "Zuidam"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -636,8 +689,7 @@
         "Absinthe Artemisia-Bugnon",
         "Larusée",
         "Val de Travers"
-      ],
-      "brands": []
+      ]
     },
     {
       "nationalities": [
@@ -701,9 +753,11 @@
         "fr": "Texas"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "SirDavis"
-      ]
+      "brands": {
+        "whisky": [
+          "SirDavis"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -712,11 +766,13 @@
         "fr": "Tennessee"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "Jack Daniel's",
-        "JACK DANIELS",
-        "Heaven's Door"
-      ]
+      "brands": {
+        "whisky": [
+          "Jack Daniel's",
+          "JACK DANIELS",
+          "Heaven's Door"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -725,10 +781,12 @@
         "fr": "Espagne"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "CL CONDE LUMAR",
-        "DYC"
-      ]
+      "brands": {
+        "whisky": [
+          "CL CONDE LUMAR",
+          "DYC"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -737,26 +795,29 @@
         "fr": "Kentucky"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "Jim Beam",
-        "Buffalo Trace",
-        "Bulleit",
-        "Maker's Mark",
-        "Four Roses",
-        "Woodford Reserve",
-        "eagle rare",
-        "Michter's",
-        "Willet",
-        "Kentucky Owl",
-        "Coopers' Craft",
-        "Wild Turkey",
-        "Evan Williams",
-        "Knob Creek",
-        "Old Overholt",
-        "Heaven Hill",
-        "Elijah Craig",
-        "Chicken Cock"
-      ]
+      "brands": {
+        "whisky": [
+          "Jim Beam",
+          "Buffalo Trace",
+          "Bulleit",
+          "Maker's Mark",
+          "Four Roses",
+          "Woodford Reserve",
+          "eagle rare",
+          "Michter's",
+          "Willet",
+          "Kentucky Owl",
+          "Coopers' Craft",
+          "Wild Turkey",
+          "Evan Williams",
+          "Knob Creek",
+          "Old Overholt",
+          "Heaven Hill",
+          "Elijah Craig",
+          "Chicken Cock",
+          "Rebell Yell"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -765,10 +826,12 @@
         "fr": "Québec"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "La Chaufferie",
-        "Sortilège"
-      ]
+      "brands": {
+        "whisky": [
+          "La Chaufferie",
+          "Sortilège"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -777,9 +840,11 @@
         "fr": "Italie"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "Puni"
-      ]
+      "brands": {
+        "whisky": [
+          "Puni"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -788,9 +853,11 @@
         "fr": "Corée du Sud"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "HWAYO"
-      ]
+      "brands": {
+        "whisky": [
+          "HWAYO"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -799,9 +866,11 @@
         "fr": "Iowa"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "Templeton Rye"
-      ]
+      "brands": {
+        "whisky": [
+          "Templeton Rye"
+        ]
+      }
     },
     {
       "nationalities": [],
@@ -810,11 +879,13 @@
         "fr": "Vermont"
       },
       "whiskyDistilleries": [],
-      "brands": [
-        "Whistlepig"
-      ]
+      "brands": {
+        "whisky": [
+          "Whistlepig"
+        ]
+      }
     }
   ],
-  "jsonCreatedAtDate": "13/05/2025",
-  "jsonCreatedAtTime": 1747172306785
+  "jsonCreatedAtDate": "14/05/2025",
+  "jsonCreatedAtTime": 1747234167687
 }
