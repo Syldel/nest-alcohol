@@ -980,11 +980,12 @@ describe('ExploreService', () => {
       exploreService['countries'] = [
         {
           nationalities: ['irish', 'irlandais'],
-          whiskyDistilleries: ['Bushmills'],
           country: {
             en: 'Ireland',
             fr: 'Irlande',
           },
+          whiskyDistilleries: ['Bushmills'],
+          brands: {},
         },
       ];
 
@@ -1019,21 +1020,23 @@ describe('ExploreService', () => {
   describe('findCountryMatches', () => {
     const regionCountryMappings: IRegionCountry[] = [
       {
-        regions: ['highland', 'speyside'],
         nationalities: ['scottish'],
-        whiskyDistilleries: ['glenlivet'],
+        regions: ['highland', 'speyside'],
         country: {
           en: 'Scotland',
           fr: 'Écosse',
         },
+        whiskyDistilleries: ['glenlivet'],
+        brands: {},
       },
       {
         nationalities: ['irish', 'irlandais'],
-        whiskyDistilleries: ['Bushmills'],
         country: {
           en: 'Ireland',
           fr: 'Irlande',
         },
+        whiskyDistilleries: ['Bushmills'],
+        brands: {},
       },
     ];
     const filterOptions: FilterOptions = { searchInText: true };
