@@ -1,6 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
+import * as crypto from 'crypto';
+
+// Injecte globalement l'objet crypto pour que NestJS Schedule puisse l'utiliser
+(global as any).crypto = crypto;
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

@@ -10,6 +10,6 @@ import { AlcoholService } from './alcohol.service';
     MongooseModule.forFeature([{ name: Alcohol.name, schema: AlcoholSchema }]),
   ],
   providers: [AlcoholService, AlcoholResolver],
-  exports: [AlcoholService],
+  exports: [MongooseModule, AlcoholService],
 })
 export class AlcoholModule {}

@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GraphQLModule } from '@nestjs/graphql';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 
 import { AppController } from './app.controller';
@@ -12,6 +13,7 @@ import { CompressModule } from './compress/compress.module';
 import { HuggingFaceModule } from './huggingface/huggingface.module';
 import { CountryModule } from './country/country.module';
 import { SharedModule } from './services/shared.module';
+import { BackupModule } from './backup/backup.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -28,11 +30,13 @@ const isProduction = process.env.NODE_ENV === 'production';
       debug: !isProduction,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI),
+    ScheduleModule.forRoot(),
     ExploreModule,
     CompressModule,
     HuggingFaceModule,
     CountryModule,
     SharedModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
