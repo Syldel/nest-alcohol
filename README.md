@@ -291,6 +291,24 @@ Une fois connecté, vous pouvez exécuter des commandes MongoDB directement dans
 
 Pour utiliser Mongosh avec Atlas Stream Processing, assurez-vous d'utiliser Mongosh version 2.0.0 ou supérieure.
 
+### Requête MongoDB : Filtrer un tableau de sous-documents avec `$elemMatch`
+
+Cette requête permet de rechercher les documents contenant un champ `details`, qui est un **tableau de sous-documents**, dans lequel **au moins un élément** possède simultanément :
+
+- `legend` égal à `"Marque"`
+- `value` égal à `"Jack Daniels"`
+
+```js
+{
+  details: {
+    $elemMatch: {
+      legend: "Marque",
+      value: "Jack Daniels"
+    }
+  }
+}
+```
+
 ### Liens utiles
 
 * Télécharger Mongosh : [https://www.mongodb.com/try/download/shell](https://www.mongodb.com/try/download/shell)
