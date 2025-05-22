@@ -2,9 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 
 import { confirm } from '@clack/prompts';
+import * as cheerio from 'cheerio';
 
 import { SharedModule } from '@services/shared.module';
-import { ExploreService, IRegionCountry } from './explore.service';
+import { ESpiritType, ExploreService, IRegionCountry } from './explore.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
@@ -24,6 +25,7 @@ describe('ExploreService', () => {
   beforeAll(async () => {
     alcoholServiceMock = {
       findAll: jest.fn().mockReturnValue(['Mock Whiskey', 'Mock Vodka']),
+      findExistingASINs: jest.fn().mockReturnValue(['B08Z4F64ZH']),
       // findOne: jest.fn().mockImplementation((id: number) => `Mock Alcohol ${id}`),
       create: jest
         .fn()
@@ -1143,7 +1145,7 @@ describe('ExploreService', () => {
         .mockImplementation(() => {});
     });
 
-    it('should add unique links to the internal list', () => {
+    it('should add unique links to the internal list', async () => {
       const links = [
         {
           asin: 'A1',
@@ -1159,7 +1161,7 @@ describe('ExploreService', () => {
         },
       ];
 
-      (exploreService as any).addExplorationLinks(links);
+      await (exploreService as any).addExplorationLinks(links);
       expect((exploreService as any).links).toHaveLength(2);
       expect((exploreService as any).links.map((l) => l.asin)).toEqual([
         'A1',
@@ -1167,7 +1169,7 @@ describe('ExploreService', () => {
       ]);
     });
 
-    it('should ignore links with duplicate ASINs in input array', () => {
+    it('should ignore links with duplicate ASINs in input array', async () => {
       const links = [
         {
           asin: 'A1',
@@ -1183,12 +1185,12 @@ describe('ExploreService', () => {
         },
       ];
 
-      (exploreService as any).addExplorationLinks(links);
+      await (exploreService as any).addExplorationLinks(links);
       expect((exploreService as any).links).toHaveLength(1);
       expect((exploreService as any).links[0].asin).toBe('A1');
     });
 
-    it('should ignore links that already exist in the internal list', () => {
+    it('should ignore links that already exist in the internal list', async () => {
       (exploreService as any).links = [
         { asin: 'A1', url: 'http://existing.com', explored: false },
       ];
@@ -1208,14 +1210,14 @@ describe('ExploreService', () => {
         },
       ];
 
-      (exploreService as any).addExplorationLinks(links);
+      await (exploreService as any).addExplorationLinks(links);
       expect((exploreService as any).links).toHaveLength(2);
       expect(
         (exploreService as any).links.find((l) => l.asin === 'A1')?.url,
       ).toBe('http://existing.com');
     });
 
-    it('should ignore links without addToExploration flag', () => {
+    it('should ignore links without addToExploration flag', async () => {
       const links = [
         {
           asin: 'A1',
@@ -1231,12 +1233,12 @@ describe('ExploreService', () => {
         },
       ];
 
-      (exploreService as any).addExplorationLinks(links);
+      await (exploreService as any).addExplorationLinks(links);
       expect((exploreService as any).links).toHaveLength(1);
       expect((exploreService as any).links[0].asin).toBe('A2');
     });
 
-    it('should ignore null and undefined entries in input', () => {
+    it('should ignore null and undefined entries in input', async () => {
       const links = [
         {
           asin: 'A1',
@@ -1254,12 +1256,130 @@ describe('ExploreService', () => {
         },
       ] as any[];
 
-      (exploreService as any).addExplorationLinks(links);
+      await (exploreService as any).addExplorationLinks(links);
       expect((exploreService as any).links).toHaveLength(2);
       expect((exploreService as any).links.map((l) => l.asin)).toEqual([
         'A1',
         'A2',
       ]);
+    });
+  });
+
+  describe('checkAlcoholType', () => {
+    beforeEach(() => {
+      jest
+        .spyOn(exploreService as any, 'coloredLog')
+        .mockImplementation(() => {});
+      jest.spyOn(console, 'log').mockImplementation();
+
+      (exploreService as any).targetKeyword = ESpiritType.WHISKY;
+    });
+
+    const createCheerioInstance = (
+      breadText: string,
+      alcoholTypeText: string,
+    ) => {
+      const html = `
+        <div id="wayfinding-breadcrumbs_feature_div">${breadText}</div>
+        <div id="dp">
+          <table>
+            <tr class="po-alcohol_type">
+              <td>Alcohol Type</td>
+              <td>${alcoholTypeText}</td>
+            </tr>
+          </table>
+        </div>
+      `;
+      const $ = cheerio.load(html);
+      return $;
+    };
+
+    it('detects a different alcohol - Gin', async () => {
+      const $ = createCheerioInstance('Spiritueux›Gins', 'Gin');
+
+      await exploreService['checkAlcoholType']($);
+
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.GIN);
+    });
+
+    it('detects a different alcohol - Rhum', async () => {
+      const $ = createCheerioInstance('Spiritueux›Rhums', 'Rhum');
+
+      await exploreService['checkAlcoholType']($);
+
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.RHUM);
+    });
+
+    it('does not update targetKeyword if no match is found', async () => {
+      const $ = createCheerioInstance('Welcome to our shop', 'Orange juice');
+
+      await exploreService['checkAlcoholType']($);
+
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.WHISKY);
+    });
+
+    it('handles singular breadcrumb ending', async () => {
+      const $ = createCheerioInstance('Spiritueux›Vodka', 'Vodka');
+
+      await exploreService['checkAlcoholType']($);
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.VODKA);
+    });
+
+    it('handles lowercase and trimming correctly', async () => {
+      const $ = createCheerioInstance('    spiritueux›cognac   ', '  CoGnAc  ');
+
+      await exploreService['checkAlcoholType']($);
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.COGNAC);
+    });
+
+    it('detects target keyword match', async () => {
+      const $ = createCheerioInstance('Spiritueux›Whiskys', 'Whisky');
+
+      await exploreService['checkAlcoholType']($);
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.WHISKY,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.WHISKY);
+    });
+
+    it('detects target keyword match with complex alcohol type', async () => {
+      (exploreService as any).targetKeyword = ESpiritType.VODKA;
+      const $ = createCheerioInstance(
+        'Spiritueux›Whiskys',
+        'Whisky de grains (Rye, Maïs)',
+      );
+
+      await exploreService['checkAlcoholType']($);
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.VODKA,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.WHISKY);
+    });
+
+    it('detects target keyword match with Whiskey exception', async () => {
+      (exploreService as any).targetKeyword = ESpiritType.VODKA;
+      const $ = createCheerioInstance('Spiritueux›Whiskys', 'Irish Whiskey');
+
+      await exploreService['checkAlcoholType']($);
+      expect((exploreService as any)._previousTargetKeyword).toBe(
+        ESpiritType.VODKA,
+      );
+      expect((exploreService as any).targetKeyword).toBe(ESpiritType.WHISKY);
     });
   });
 });

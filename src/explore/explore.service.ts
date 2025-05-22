@@ -40,13 +40,14 @@ type Link = {
   addToExploration?: boolean;
 };
 
-enum ESpiritType {
+export enum ESpiritType {
   WHISKY = 'whisky',
   RHUM = 'rhum',
   GIN = 'gin',
   COGNAC = 'cognac',
   TEQUILA = 'tequila',
   VODKA = 'vodka',
+  ARMAGNAC = 'armagnac',
 }
 
 // Type avec toutes les clés optionnelles
@@ -73,8 +74,10 @@ export class ExploreService implements OnModuleInit {
   private countries: IRegionCountry[];
   private jsonCountriesPath = `jsons/countries.json`;
 
-  private targetKeyword = ESpiritType.WHISKY;
+  private targetKeyword = ESpiritType.RHUM;
   private langCountryCode = 'fr_FR';
+
+  private _previousTargetKeyword: ESpiritType;
 
   private _stopExploration = false;
 
@@ -117,7 +120,7 @@ export class ExploreService implements OnModuleInit {
    *
    * @param {Link[]} exploLinks - Array of links to be added.
    */
-  private addExplorationLinks(exploLinks: Link[]) {
+  private async addExplorationLinks(exploLinks: Link[]) {
     const validLinks = exploLinks.filter(
       (link): link is Link =>
         !!link && !this.links.some((existing) => existing.asin === link.asin),
@@ -130,7 +133,18 @@ export class ExploreService implements OnModuleInit {
       }
     });
 
-    filtered.forEach((link) => this.addExplorationLink(link));
+    const allASINs = Array.from(filtered.keys());
+    const existingASINs = await this.alcoholService.findExistingASINs(allASINs);
+    console.log(
+      `⌕ Existing ASINs found in the database: ${this.coloredText(ELogColor.FgCyan, existingASINs.join(', '))}`,
+    );
+
+    // Filter out links whose ASINs already exist in the database
+    const newLinks = Array.from(filtered.entries())
+      .filter(([asin]) => !existingASINs.includes(asin))
+      .map(([, link]) => link);
+
+    newLinks.forEach((link) => this.addExplorationLink(link));
   }
 
   /**
@@ -385,6 +399,18 @@ export class ExploreService implements OnModuleInit {
     const $ = cheerio.load(html);
     this.cheerioAPI = $;
 
+    if (this._previousTargetKeyword) {
+      this.coloredLog(
+        ELogColor.FgMagenta,
+        `Restore the previous "targetKeyword" value: ${this._previousTargetKeyword}`,
+      );
+      this.targetKeyword = this._previousTargetKeyword;
+      this._previousTargetKeyword = null;
+    }
+    console.log(
+      `Current target keyword: ${this.coloredText(ELogColor.FgYellow, this.targetKeyword)}`,
+    );
+
     const canonicalLink = $('link[rel="canonical"]').attr('href');
     this.coloredLog(ELogColor.FgCyan, `Canonical link: ${canonicalLink}`);
 
@@ -442,7 +468,7 @@ export class ExploreService implements OnModuleInit {
         pageLinks.push(link);
       });
 
-      this.addExplorationLinks(pageLinks);
+      await this.addExplorationLinks(pageLinks);
     }
 
     if ($('#dp').length > 0) {
@@ -518,6 +544,9 @@ export class ExploreService implements OnModuleInit {
       }
 
       if ($('#ppd').length > 0) {
+        // Temporarily replace "targetKeyword" if another spirit is detected.
+        this.checkAlcoholType($);
+
         let breadStr = $('#wayfinding-breadcrumbs_feature_div')
           .text()
           ?.replace(/\s+|\n/g, ' ')
@@ -567,7 +596,11 @@ export class ExploreService implements OnModuleInit {
 
         /* ********************************************************************************* */
 
-        this.addExplorationLinks(pageLinks);
+        if (!this._previousTargetKeyword) {
+          await this.addExplorationLinks(pageLinks);
+        } else {
+          this.coloredLog(ELogColor.FgMagenta, `ㄨ Don't add found links!`);
+        }
 
         /* ********************************************************************************* */
 
@@ -1040,6 +1073,55 @@ export class ExploreService implements OnModuleInit {
     }
   }
 
+  private async checkAlcoholType($: cheerio.CheerioAPI) {
+    const breadText =
+      $('#wayfinding-breadcrumbs_feature_div').text()?.trim() || '';
+    console.log(
+      'breadcrumbs:',
+      this.coloredText(ELogColor.FgYellow, `${breadText}`),
+    );
+
+    const alcoholTypeText = $('#dp .po-alcohol_type td:nth-child(2)')
+      .text()
+      ?.trim();
+    console.log(
+      'alcohol_type:',
+      this.coloredText(ELogColor.FgYellow, `${alcoholTypeText}`),
+    );
+
+    const lowerBread = breadText.toLowerCase();
+    const lowerAlcohol = alcoholTypeText.toLowerCase();
+    let matchesBread = false;
+    let matchesAlcohol = false;
+
+    for (const [key, value] of Object.entries(ESpiritType)) {
+      matchesBread =
+        lowerBread.endsWith(`${value}s`) || lowerBread.endsWith(`${value}`);
+      matchesAlcohol =
+        lowerAlcohol.includes(value) ||
+        lowerAlcohol.includes(value === ESpiritType.WHISKY ? 'whiskey' : value);
+
+      if (matchesBread && matchesAlcohol) {
+        const isTarget = value === this.targetKeyword;
+        const color = isTarget ? ELogColor.FgMagenta : ELogColor.FgCyan;
+        const message = isTarget
+          ? `❤️ Target: ${key} detected!`
+          : `✨ ${key} detected!`;
+
+        this.coloredLog(color, message);
+        if (!isTarget) {
+          this.coloredLog(
+            ELogColor.FgMagenta,
+            `↹ Replace ${this.targetKeyword} with ${value}!`,
+          );
+          this._previousTargetKeyword = this.targetKeyword;
+          this.targetKeyword = value;
+        }
+        break;
+      }
+    }
+  }
+
   private async checkBrandName(details: Details[]): Promise<Details[]> {
     const brandDetail = details.find((detail) =>
       ['marque', 'brand'].some((keyword) =>
@@ -1221,7 +1303,7 @@ export class ExploreService implements OnModuleInit {
 
         if (!foundBrandInJson) {
           const saveConfirmation = await confirm({
-            message: `Save the brand name "${brandName}" for "${country.names.en}" in json?`,
+            message: `Save the ${this.targetKeyword} brand name "${brandName}" for "${country.names.en}" in json?`,
           });
           if (isCancel(saveConfirmation)) {
             cancel('Operation cancelled.');
@@ -2184,46 +2266,10 @@ export class ExploreService implements OnModuleInit {
         console.log($.html());
         await this.enterCaptcha($);
         return 'continue';
+      } else {
+        autoSkip = true;
       }
     } else if (negativeCriteria >= 3) {
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('gins') &&
-      alcoholTypeText.toLowerCase().includes('gin')
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Gin detected!');
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('rhums') &&
-      alcoholTypeText.toLowerCase().includes('rhum')
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Rhum detected!');
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('vodkas') &&
-      alcoholTypeText.toLowerCase().includes('vodka')
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Vodka detected!');
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('tequilas') &&
-      alcoholTypeText.toLowerCase().includes('tequila')
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Tequila detected!');
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('cognac') &&
-      (alcoholTypeText.toLowerCase().includes('cognac') ||
-        alcoholTypeText.toLowerCase().includes('brandy'))
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Cognac detected!');
-      autoSkip = true;
-    } else if (
-      breadText.toLowerCase().endsWith('armagnac') &&
-      (alcoholTypeText.toLowerCase().includes('armagnac') ||
-        alcoholTypeText.toLowerCase().includes('brandy'))
-    ) {
-      this.coloredLog(ELogColor.FgCyan, '✨ Armagnac detected!');
       autoSkip = true;
     } else if (
       breadText.toLowerCase().endsWith('liqueurs') &&

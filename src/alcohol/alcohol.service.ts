@@ -70,6 +70,22 @@ export class AlcoholService extends BaseService {
   }
 
   /**
+   * Retrieves ASINs from the database that already exist among the given list.
+   *
+   * @param asins - An array of ASIN strings to check for existence.
+   * @returns A Promise that resolves to an array of ASINs found in the database.
+   */
+  async findExistingASINs(asins: string[]): Promise<string[]> {
+    const results = await this.alcoholModel
+      .find({ asin: { $in: asins } })
+      .select('asin')
+      .lean()
+      .exec();
+
+    return results.map((doc) => doc.asin);
+  }
+
+  /**
    * Récupère une liste unique de valeurs pour une `legend` spécifique (ex: "Marque", "Pays").
    *
    * @param {string} legend - Le champ ciblé dans `details` (ex: "Marque", "Pays", "Type").
