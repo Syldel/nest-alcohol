@@ -87,12 +87,11 @@ describe('HuggingFaceService', () => {
       );
     });
 
-    it('should retry 3 times on failure and then fail', async () => {
+    it('should retry 2 times on failure and then fail', async () => {
       const text = 'Some text to analyze';
       const modelKey = EHFModel.CAMEMBERT;
 
       requestSpy
-        .mockRejectedValueOnce(new Error('Network error'))
         .mockRejectedValueOnce(new Error('Network error'))
         .mockRejectedValueOnce(new Error('Network error'));
 
@@ -102,7 +101,7 @@ describe('HuggingFaceService', () => {
 
       expect(result).toBeNull();
 
-      expect(requestSpy).toHaveBeenCalledTimes(3);
+      expect(requestSpy).toHaveBeenCalledTimes(2);
     });
   });
 

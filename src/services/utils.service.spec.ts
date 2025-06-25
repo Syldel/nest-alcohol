@@ -1094,4 +1094,42 @@ describe('UtilsService', () => {
       expect(result).toEqual({ a: 1, b: 2 });
     });
   });
+
+  describe('capitalizeWords', () => {
+    it('capitalizes a single lowercase word', () => {
+      expect(utilsService.capitalizeWords('kraken')).toBe('Kraken');
+    });
+
+    it('capitalizes multiple lowercase words', () => {
+      expect(utilsService.capitalizeWords('kraken exchange')).toBe(
+        'Kraken Exchange',
+      );
+    });
+
+    it('handles uppercase input', () => {
+      expect(utilsService.capitalizeWords('KRAKEN EXCHANGE')).toBe(
+        'Kraken Exchange',
+      );
+    });
+
+    it('handles mixed case input', () => {
+      expect(utilsService.capitalizeWords('kRAken ExCHANge')).toBe(
+        'Kraken Exchange',
+      );
+    });
+
+    it('handles extra spaces', () => {
+      expect(utilsService.capitalizeWords('  kucoin   exchange  ')).toBe(
+        'Kucoin Exchange',
+      );
+    });
+
+    it('handles empty string', () => {
+      expect(utilsService.capitalizeWords('')).toBe('');
+    });
+
+    it('handles single letter words', () => {
+      expect(utilsService.capitalizeWords('a b c')).toBe('A B C');
+    });
+  });
 });

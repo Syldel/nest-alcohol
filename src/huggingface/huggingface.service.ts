@@ -45,7 +45,7 @@ export class HuggingFaceService {
       '\x1b[35m' + `HuggingFace => analyze text with ${modelKey}` + '\x1b[0m',
     );
 
-    const maxRetries = 3;
+    const maxRetries = 2;
     const retryDelay = 60000;
 
     try {

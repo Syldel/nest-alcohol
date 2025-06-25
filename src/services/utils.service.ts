@@ -50,6 +50,14 @@ export class UtilsService {
     await firstValueFrom(timer(ms).pipe(take(1)));
   }
 
+  public capitalizeWords(text: string): string {
+    return text
+      .trim()
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   public getLastElement(input: string, delimiter: string): string {
     if (!input) return input;
     const parts = input.split(delimiter);

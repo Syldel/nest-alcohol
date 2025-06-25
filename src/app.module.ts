@@ -14,6 +14,7 @@ import { HuggingFaceModule } from './huggingface/huggingface.module';
 import { CountryModule } from './country/country.module';
 import { SharedModule } from './services/shared.module';
 import { BackupModule } from './backup/backup.module';
+import { VeniceModule } from './venice/venice.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -34,6 +35,7 @@ const isProduction = process.env.NODE_ENV === 'production';
     ExploreModule,
     CompressModule,
     HuggingFaceModule,
+    VeniceModule,
     CountryModule,
     SharedModule,
     BackupModule,

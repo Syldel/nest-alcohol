@@ -9,6 +9,7 @@ import { ESpiritType, ExploreService, IRegionCountry } from './explore.service';
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
+import { VeniceService } from '../venice/venice.service';
 import { CountryService, FilterOptions } from '../country/country.service';
 
 jest.mock('@clack/prompts', () => ({
@@ -20,6 +21,7 @@ describe('ExploreService', () => {
   let exploreService: ExploreService;
   let countryService: CountryService;
   let huggingFaceService: HuggingFaceService;
+  let veniceService: VeniceService;
   let alcoholServiceMock: jest.Mocked<AlcoholService>;
 
   beforeAll(async () => {
@@ -44,6 +46,7 @@ describe('ExploreService', () => {
         ExploreService,
         CompressService,
         HuggingFaceService,
+        VeniceService,
         CountryService,
       ],
     }).compile();
@@ -51,6 +54,7 @@ describe('ExploreService', () => {
     exploreService = app.get<ExploreService>(ExploreService);
     countryService = app.get<CountryService>(CountryService);
     huggingFaceService = app.get<HuggingFaceService>(HuggingFaceService);
+    veniceService = app.get<VeniceService>(VeniceService);
   });
 
   describe('extractASIN', () => {
@@ -845,11 +849,13 @@ describe('ExploreService', () => {
     let searchCountrySpy: jest.SpyInstance;
     let findMatchesSpy: jest.SpyInstance;
     let huggingFaceAnalyzeSpy: jest.SpyInstance;
+    let veniceChatSpy: jest.SpyInstance;
 
     beforeEach(() => {
       if (searchCountrySpy) searchCountrySpy.mockClear();
       if (findMatchesSpy) findMatchesSpy.mockClear();
       if (huggingFaceAnalyzeSpy) huggingFaceAnalyzeSpy.mockClear();
+      if (veniceChatSpy) veniceChatSpy.mockClear();
     });
 
     it('should extract country information when country detail is present', async () => {
@@ -994,6 +1000,10 @@ describe('ExploreService', () => {
       searchCountrySpy = jest
         .spyOn(countryService as any, 'searchCountriesOrRegions')
         .mockReturnValueOnce([]);
+
+      veniceChatSpy = jest
+        .spyOn(veniceService as any, 'chatCompletions')
+        .mockReturnValueOnce(null);
 
       const huggingFaceResult = [
         {

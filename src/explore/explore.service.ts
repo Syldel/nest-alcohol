@@ -15,6 +15,7 @@ import {
   EHFModel,
   HuggingFaceService,
 } from '../huggingface/huggingface.service';
+import { VeniceService } from '../venice/venice.service';
 import {
   Country,
   CountryService,
@@ -74,7 +75,7 @@ export class ExploreService implements OnModuleInit {
   private countries: IRegionCountry[];
   private jsonCountriesPath = `jsons/countries.json`;
 
-  private targetKeyword = ESpiritType.RHUM;
+  private targetKeyword = ESpiritType.GIN;
   private langCountryCode = 'fr_FR';
 
   private _previousTargetKeyword: ESpiritType;
@@ -98,6 +99,7 @@ export class ExploreService implements OnModuleInit {
     private readonly compressService: CompressService,
     private readonly huggingFaceService: HuggingFaceService,
     private readonly countryService: CountryService,
+    private readonly veniceService: VeniceService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
@@ -859,14 +861,33 @@ export class ExploreService implements OnModuleInit {
 
         console.log('details:', details);
 
-        /* ************** AVOID SOME BRANDS ***************** */
+        const productCountDetail = details.find((detail) =>
+          ["Nombre d'articles"].some((keyword) =>
+            detail.legend.toLowerCase().includes(keyword.toLowerCase()),
+          ),
+        );
+        if (productCountDetail && Number(productCountDetail?.value) > 1) {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `Nombre d'articles: ${productCountDetail?.value} => SKIP`,
+          );
+          // SKIP
+          return;
+        }
 
         const brandDetail = details.find((detail) =>
           ['marque', 'brand'].some((keyword) =>
             detail.legend.toLowerCase().includes(keyword.toLowerCase()),
           ),
         );
-        const blacklistBrands = ['RICARD'];
+        if (brandDetail) {
+          brandDetail.value = this.utilsService.capitalizeWords(
+            brandDetail.value,
+          );
+        }
+
+        /* ************** AVOID SOME BRANDS ***************** */
+        const blacklistBrands = ['RICARD', 'VINADDICT'];
         if (
           blacklistBrands.some((keyword) =>
             brandDetail?.value.toLowerCase().includes(keyword.toLowerCase()),
@@ -1003,6 +1024,33 @@ export class ExploreService implements OnModuleInit {
           }
         }
 
+        /* ************** BAD BRAND NAME ***************** */
+        const badBrands = ['Générique', 'Wine And More'];
+        if (
+          badBrands.some((keyword) =>
+            brandDetail?.value.toLowerCase().includes(keyword.toLowerCase()),
+          )
+        ) {
+          this.coloredLog(
+            ELogColor.FgRed,
+            `One of the following bad brands have been found: ${brandDetail.value}`,
+          );
+
+          const aiBrandName = await this.foundBrandNameWithAI(
+            productTitle,
+            textDescription,
+            descDecompressedText,
+          );
+
+          if (aiBrandName && aiBrandName.length > 0) {
+            brandDetail.value = aiBrandName;
+            this.coloredLog(
+              ELogColor.FgGreen,
+              `New brand name value in details: ${brandDetail.value}`,
+            );
+          }
+        }
+
         /* ****************************** CHECK BRAND NAME ************************************* */
 
         details = await this.checkBrandName(details);
@@ -1099,7 +1147,15 @@ export class ExploreService implements OnModuleInit {
         lowerBread.endsWith(`${value}s`) || lowerBread.endsWith(`${value}`);
       matchesAlcohol =
         lowerAlcohol.includes(value) ||
-        lowerAlcohol.includes(value === ESpiritType.WHISKY ? 'whiskey' : value);
+        lowerAlcohol.includes(
+          value === ESpiritType.WHISKY ? 'whiskey' : value,
+        ) ||
+        lowerAlcohol.includes(
+          value === ESpiritType.COGNAC ? 'brandy' : value,
+        ) ||
+        lowerAlcohol.includes(
+          value === ESpiritType.ARMAGNAC ? 'brandy' : value,
+        );
 
       if (matchesBread && matchesAlcohol) {
         const isTarget = value === this.targetKeyword;
@@ -1242,6 +1298,11 @@ export class ExploreService implements OnModuleInit {
       country = country?.regions[0] as CountryInfo;
     }
 
+    return country;
+
+    const usePrompt = false;
+
+    // countries.json system
     if (country) {
       const foundCountryInJson = this.countries.some((jsonCountry) => {
         const countryNameEn = country.names.en?.toLowerCase().trim();
@@ -1259,13 +1320,17 @@ export class ExploreService implements OnModuleInit {
       });
 
       if (!foundCountryInJson) {
-        const saveConfirmation = await confirm({
-          message: `Save the new country "${country.names.en}" in json?`,
-        });
-        if (isCancel(saveConfirmation)) {
-          cancel('Operation cancelled.');
-          process.exit(0);
+        let saveConfirmation: boolean | symbol = true;
+        if (usePrompt) {
+          saveConfirmation = await confirm({
+            message: `Save the new country "${country.names.en}" in json?`,
+          });
+          if (isCancel(saveConfirmation)) {
+            cancel('Operation cancelled.');
+            process.exit(0);
+          }
         }
+
         if (saveConfirmation) {
           const brands: BrandsMap = {};
           brands[this.targetKeyword] = brandName ? [brandName.trim()] : [];
@@ -1302,13 +1367,17 @@ export class ExploreService implements OnModuleInit {
         });
 
         if (!foundBrandInJson) {
-          const saveConfirmation = await confirm({
-            message: `Save the ${this.targetKeyword} brand name "${brandName}" for "${country.names.en}" in json?`,
-          });
-          if (isCancel(saveConfirmation)) {
-            cancel('Operation cancelled.');
-            process.exit(0);
+          let saveConfirmation: boolean | symbol = true;
+          if (usePrompt) {
+            saveConfirmation = await confirm({
+              message: `Save the ${this.targetKeyword} brand name "${brandName}" for "${country.names.en}" in json?`,
+            });
+            if (isCancel(saveConfirmation)) {
+              cancel('Operation cancelled.');
+              process.exit(0);
+            }
           }
+
           if (saveConfirmation) {
             this.countries = this.countries.map((jsonCountry) => {
               if (
@@ -1480,7 +1549,68 @@ export class ExploreService implements OnModuleInit {
       'No country data found in title (with mapping)!',
     );
 
-    /* ******************************* STEP 4 : MISTRAL AI *********************************/
+    /* ******************************* STEP 4 : VENICE AI *********************************/
+
+    if (!finalCountry) {
+      /* ****************************** VENICE AI ************************************** */
+      // Donne aussi le drapeau (flag) en "Emoji Unicode", tel que {"flag": "🇺🇸"}, la valeur doit comporter uniquement des caractères unicode.
+      // N'oublie pas de prendre en considération les sous régions, comme les états américains, le Code ISO 3166-2 (sub) pour le Tennessee est : US-TN. Pour la Grande-Bretagne, le Code ISO 3166-2 (sub) pour le l'Écosse est : GB-SCT.
+      const prompt = `Guess what is the manufacturer country (distillery) about this product : title: "${productTitle}", description 1: "${textDescription}", description 2: "${descDecompressedText}". Give me the country name in english and french with the code alpha2 and alpha3 (ISO 3166-1), et si il y a une sous région, peux tu aussi donner le code comme SCT pour Scotland (ISO 3166-2).
+      Donne moi les infos sous forme d'objet json, uniquement les infos de pays sous forme {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Scotland","fr":"Écosse"},"iso":"SCT"}]}, autres exemples : {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Wales","fr":"Pays de Galles"},"iso":"WLS"}]} ou {"iso":"US","iso3":"USA","names":{"en":"United States","fr":"États-Unis"},"regions":[{"names":{"en":"Kentucky","fr":"Kentucky"},"iso":"KY"}]} ou {"names": {"en": "Japan", "fr": "Japon"}, "iso": "JP", "iso3": "JPN"}, précise absolument le résultat de cette manière : \`\`\`json {} \`\`\`. L'ouverture et la fermeture doivent absolument comporter trois apostrophes comme \`\`\`.
+      Le "regions" est optionnel.`;
+
+      const veniceResult = await this.veniceService.chatCompletions(prompt, 1);
+
+      console.log(
+        'Venice message content:',
+        veniceResult?.choices[0]?.message?.content,
+      );
+
+      if (veniceResult?.choices[0]?.message?.content) {
+        const generatedText = veniceResult?.choices[0]?.message?.content;
+        const optimizedAnswerText = generatedText.replace(prompt, '');
+        const veniceCountries: CountryInfo[] =
+          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+        console.log('veniceCountries?.length:', veniceCountries?.length);
+        const veniceFinalCountry = veniceCountries.find(
+          (country) => Object.keys(country).length > 0,
+        );
+
+        if (veniceFinalCountry) {
+          const searchFoundCountry = async (lang = 'en') => {
+            let countryToSearch = veniceFinalCountry?.names[lang];
+            if (veniceFinalCountry?.regions?.length > 1) {
+              this.coloredLog(ELogColor.FgRed, 'Several regions are found!');
+              // TODO: Maybe choose a region
+              // return null;
+            }
+
+            if (veniceFinalCountry?.regions?.length === 1) {
+              countryToSearch = veniceFinalCountry?.regions[0].names[lang];
+            }
+
+            console.log(
+              'countryToSearch:',
+              this.coloredText(ELogColor.FgYellow, countryToSearch),
+            );
+
+            foundCountries = await this.countryService.searchCountriesOrRegions(
+              countryToSearch,
+              { ...filterOptions, ...{ searchInText: true } },
+            );
+
+            return await this.selectCountry(foundCountries);
+          };
+
+          finalCountry = await searchFoundCountry('en');
+          if (!finalCountry) {
+            finalCountry = await searchFoundCountry('fr');
+          }
+        }
+      }
+    }
+
+    /* ******************************* STEP 5 : MISTRAL AI *********************************/
 
     if (!finalCountry) {
       /* ****************************** MISTRAL AI ************************************** */
@@ -1499,28 +1629,56 @@ export class ExploreService implements OnModuleInit {
         const mistralCountries: CountryInfo[] =
           this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
         console.log('mistralCountries?.length:', mistralCountries?.length);
-        finalCountry = mistralCountries.find(
+        const mistralFinalCountry = mistralCountries.find(
           (country) => Object.keys(country).length > 0,
         );
-      }
 
-      console.log('country (Mistral AI):', finalCountry);
+        console.log('country (Mistral AI):', mistralFinalCountry);
 
-      if (finalCountry) {
-        if (finalCountry.regions && finalCountry.regions.length === 0) {
-          delete finalCountry.regions;
-        }
+        if (mistralFinalCountry) {
+          if (
+            mistralFinalCountry.regions &&
+            mistralFinalCountry.regions.length === 0
+          ) {
+            delete mistralFinalCountry.regions;
+          }
 
-        const mistralCountrySaveConfirmation = await confirm({
-          message: `Are you sure you want to save this country's data?`,
-        });
-        if (!mistralCountrySaveConfirmation) {
+          let countryToSearch = mistralFinalCountry?.names.en;
+          if (mistralFinalCountry?.regions?.length > 1) {
+            this.coloredLog(ELogColor.FgRed, 'Several regions are found!');
+            // TODO: Maybe choose a region
+            // return null;
+          }
+
+          if (mistralFinalCountry?.regions?.length === 1) {
+            countryToSearch = mistralFinalCountry?.regions[0].names.en;
+          }
+
+          console.log(
+            'countryToSearch:',
+            this.coloredText(ELogColor.FgYellow, countryToSearch),
+          );
+
+          foundCountries = await this.countryService.searchCountriesOrRegions(
+            countryToSearch,
+            { ...filterOptions, ...{ searchInText: true } },
+          );
+
+          finalCountry = await this.selectCountry(foundCountries);
+
+          /*
+          const mistralCountrySaveConfirmation = await confirm({
+            message: `Are you sure you want to save this country's data?`,
+          });
+          if (!mistralCountrySaveConfirmation) {
+            return;
+          }
+          */
+        } else {
+          console.log('mistralResult:', mistralResult);
+          this.coloredLog(ELogColor.FgRed, `Mistral country is null!`);
           return;
         }
-      } else {
-        console.log('mistralResult:', mistralResult);
-        this.coloredLog(ELogColor.FgRed, `Mistral country is null!`);
-        return;
       }
     }
 
@@ -2262,14 +2420,18 @@ export class ExploreService implements OnModuleInit {
       console.log('Just text:', justContentText);
       if (justContentText.includes('Page introuvable')) {
         autoSkip = true;
+      } else if (justContentText.includes('Cliquez sur le bouton')) {
+        console.log($.html());
+        await this.page.click('button.a-button-text');
+        return 'stop';
       } else if (justContentText.includes('robot')) {
         console.log($.html());
         await this.enterCaptcha($);
-        return 'continue';
+        return 'stop'; // Should be 'continue' but the page is not refreshed.
       } else {
         autoSkip = true;
       }
-    } else if (negativeCriteria >= 3) {
+    } else if (negativeCriteria >= 2) {
       autoSkip = true;
     } else if (
       breadText.toLowerCase().endsWith('liqueurs') &&
@@ -2303,5 +2465,34 @@ export class ExploreService implements OnModuleInit {
         { value: 'stop', label: 'Stop' },
       ],
     });
+  }
+
+  private async foundBrandNameWithAI(
+    productTitle: string,
+    textDescription: string,
+    descDecompressedText: string,
+  ) {
+    /* ****************************** VENICE AI ************************************** */
+    const prompt = `Guess what is the manufacturer (distillery), give the brand name about this product : title: "${productTitle}", description 1: "${textDescription}", description 2: "${descDecompressedText}".
+      Donne moi les infos sous forme d'objet json, uniquement la marque sous forme {"brand": "Market Row Rum"}. Précise absolument le résultat de cette manière : \`\`\`json {} \`\`\`. L'ouverture et la fermeture doivent absolument comporter trois apostrophes comme \`\`\``;
+
+    const veniceResult = await this.veniceService.chatCompletions(prompt, 1);
+
+    console.log(
+      'Venice message content:',
+      veniceResult?.choices[0]?.message?.content,
+    );
+
+    if (veniceResult?.choices[0]?.message?.content) {
+      const generatedText = veniceResult?.choices[0]?.message?.content;
+      const aiBrandArr =
+        this.huggingFaceService.extractCodeBlocks(generatedText);
+      const veniceFinalBrand = aiBrandArr.find(
+        (brand) => Object.keys(brand).length > 0,
+      );
+      if (veniceFinalBrand?.brand) {
+        return this.utilsService.capitalizeWords(veniceFinalBrand?.brand);
+      }
+    }
   }
 }

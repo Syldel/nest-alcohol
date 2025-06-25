@@ -16,7 +16,7 @@ export class BackupService {
     private readonly alcoholModel: Model<AlcoholDocument>,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_2_HOURS)
   async handleScheduledBackup() {
     console.log('⚙️ Scheduled backup started');
     await this.handleBackup();
