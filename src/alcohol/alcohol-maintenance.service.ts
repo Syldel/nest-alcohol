@@ -24,6 +24,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
   }
 
   private async fixMissingFrenchNames() {
+    // 1. Country names missing 'fr'
     const results =
       await this.alcoholService.findAllWhereCountryNameMissing('fr');
     console.log(
@@ -98,6 +99,35 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         }
       } else {
         console.log(`${alcohol.country?.names?.en} undefined!`);
+      }
+    }
+
+    // 2. Region names missing 'fr'
+    const regionResults =
+      await this.alcoholService.findAllWhereRegionNameMissing('fr');
+    console.log(
+      `\n[Maintenance] ${regionResults.length} items with region(s) missing names.fr`,
+    );
+
+    for (const alcohol of regionResults) {
+      console.log(`\nasin: ${alcohol.asin}`);
+      console.log(
+        `Missing 'fr' for: ${alcohol.country?.regions[0].names?.en || '[Unnamed]'}`,
+      );
+
+      for (const region of alcohol.country?.regions ?? []) {
+        console.log('region:', region);
+        if (alcohol.country.names?.en === region.names?.en) {
+          delete alcohol.country.regions;
+          alcohol.markModified('country.regions');
+
+          console.log('alcohol.country:', alcohol.country);
+          console.log('alcohol.save()');
+          await alcohol.save();
+
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          break;
+        }
       }
     }
   }

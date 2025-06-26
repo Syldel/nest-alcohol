@@ -260,4 +260,27 @@ export class AlcoholService extends BaseService {
       })
       .exec();
   }
+
+  /**
+   * Finds all alcohol documents where at least one region is missing a translation
+   * for the given language (e.g. `fr`, `en`).
+   *
+   * @param lang - The language code to check (e.g. 'fr', 'en').
+   * @returns A promise that resolves to an array of Alcohol documents
+   *          where at least one region lacks the specified translation.
+   */
+  async findAllWhereRegionNameMissing(
+    lang: string,
+  ): Promise<AlcoholDocument[]> {
+    const field = `names.${lang}`;
+    return this.alcoholModel
+      .find({
+        'country.regions': {
+          $elemMatch: {
+            [field]: { $exists: false },
+          },
+        },
+      })
+      .exec();
+  }
 }
