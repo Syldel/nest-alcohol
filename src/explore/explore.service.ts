@@ -107,7 +107,12 @@ export class ExploreService implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.start();
+    const args = process.argv.slice(2);
+    if (args.includes('--explore')) {
+      this.start();
+    } else if (args.includes('--exploration')) {
+      this.start();
+    }
   }
 
   private coloredLog = (color: ELogColor, text: string) =>

@@ -14,7 +14,16 @@ export async function backupDocument(doc) {
 
     // Ajouter le nouveau document sauvegardé
     backupData[collectionName] = backupData[collectionName] || [];
-    backupData[collectionName].push(doc);
+
+    const existing = backupData[collectionName].find(
+      (d) => d.asin === doc.asin,
+    );
+    if (!existing) {
+      backupData[collectionName].push(doc);
+    } else {
+      // console.log(`Data already exists in ${backupFilePath}`);
+      return;
+    }
 
     console.log(
       backupData[collectionName].length,

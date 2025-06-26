@@ -360,6 +360,26 @@ function getCookiesDetails() {
 getCookiesDetails();
 ```
 
+## 🛠 Maintenance Mode
+
+Run maintenance tasks at startup (e.g. patching missing country names):
+
+```bash
+npm run start -- --maintenance
+# or
+npm run start:dev -- --maintenance
+```
+
+## 🔍 Exploration Mode
+
+Run exploration at startup:
+
+```bash
+npm run start -- --explore
+# or
+npm run start:dev -- --explore
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

@@ -242,4 +242,22 @@ export class AlcoholService extends BaseService {
 
     return savedAlcohol;
   }
+
+  /**
+   * Finds all alcohol documents where the country name in the specified language is missing.
+   *
+   * @param lang - The language code to check (e.g. 'fr', 'en', 'es').
+   * @returns A promise that resolves to an array of Alcohol documents
+   *          where the specified country.names.<lang> field is not present.
+   */
+  async findAllWhereCountryNameMissing(
+    lang: string,
+  ): Promise<AlcoholDocument[]> {
+    const field = `country.names.${lang}`;
+    return this.alcoholModel
+      .find({
+        [field]: { $exists: false },
+      })
+      .exec();
+  }
 }
