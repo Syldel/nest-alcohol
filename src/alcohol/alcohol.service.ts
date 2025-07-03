@@ -283,4 +283,21 @@ export class AlcoholService extends BaseService {
       })
       .exec();
   }
+
+  /**
+   * Finds all alcohol documents where a specified country field is missing.
+   *
+   * @param field - The country field to check (e.g. 'iso' or 'iso3').
+   * @returns A promise resolving to an array of Alcohol documents.
+   */
+  async findAllWhereCountryFieldMissing(
+    field: 'iso' | 'iso3',
+  ): Promise<AlcoholDocument[]> {
+    const path = `country.${field}`;
+    return this.alcoholModel
+      .find({
+        [path]: { $exists: false },
+      })
+      .exec();
+  }
 }

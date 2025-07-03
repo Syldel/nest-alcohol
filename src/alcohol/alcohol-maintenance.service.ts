@@ -20,6 +20,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
     const args = process.argv.slice(2);
     if (args.includes('--maintenance')) {
       await this.fixMissingFrenchNames();
+      await this.fixMissingCountryIsoCodes();
     }
   }
 
@@ -56,11 +57,13 @@ export class AlcoholMaintenanceService implements OnModuleInit {
             alcohol.country?.names?.en?.trim(),
             filterOptions,
           );
-        console.log('foundCountries.length:', foundCountries.length);
+        if (foundCountries.length > 1) {
+          console.log('foundCountries.length:', foundCountries.length);
+        }
 
         if (foundCountries.length === 1) {
           const country = foundCountries[0];
-          console.log('country:', country, 'regions:', country.regions);
+          console.dir(country, { depth: 4, colors: true });
 
           if (
             country.iso &&
@@ -106,7 +109,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
     const regionResults =
       await this.alcoholService.findAllWhereRegionNameMissing('fr');
     console.log(
-      `\n[Maintenance] ${regionResults.length} items with region(s) missing names.fr`,
+      `[Maintenance] ${regionResults.length} items with region(s) missing names.fr`,
     );
 
     for (const alcohol of regionResults) {
@@ -166,5 +169,99 @@ export class AlcoholMaintenanceService implements OnModuleInit {
     }
 
     return countryInfo;
+  }
+
+  /**
+   * Fixes missing or empty iso and iso3 codes for countries in alcohol documents.
+   */
+  private async fixMissingCountryIsoCodes(): Promise<void> {
+    // Fix missing iso3
+    const missingIso3Results =
+      await this.alcoholService.findAllWhereCountryFieldMissing('iso3');
+    console.log(
+      `[Maintenance] ${missingIso3Results.length} items missing country.iso3`,
+    );
+
+    for (const alcohol of missingIso3Results) {
+      console.log(`\nasin: ${alcohol.asin}`);
+      console.log(
+        `Missing 'iso3' for: ${alcohol.country?.names?.en || '[Unnamed]'}`,
+      );
+
+      if (
+        alcohol.country?.names?.en === 'Champagne' ||
+        alcohol.country?.names?.fr === 'Champagne'
+      ) {
+        const country = {
+          names: {
+            fr: 'France',
+            en: 'France',
+          },
+          iso: 'FR',
+          iso3: 'FRA',
+          regions: [
+            {
+              names: {
+                fr: 'Champagne',
+                en: 'Champagne',
+              },
+              iso: 'GE',
+            },
+          ],
+        };
+
+        alcohol.country = country;
+        console.log('alcohol.save()');
+        await alcohol.save();
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      if (alcohol.country?.names?.en) {
+        const filterOptions: FilterOptions = {
+          exact: true,
+          keepKeys: [
+            'iso',
+            'iso3',
+            'names.fr',
+            'names.en',
+            'regions.iso',
+            'regions.names.fr',
+            'regions.names.en',
+          ],
+          keepOnlyMatchingRegions: true,
+        };
+        const foundCountries =
+          await this.countryService.searchCountriesOrRegions(
+            alcohol.country?.names?.en?.trim(),
+            filterOptions,
+          );
+        if (foundCountries.length > 1) {
+          console.log('foundCountries.length:', foundCountries.length);
+        }
+
+        if (foundCountries.length === 1) {
+          const country = foundCountries[0];
+          console.dir(country, { depth: 4, colors: true });
+
+          if (
+            country.iso &&
+            country.iso3 &&
+            country.names?.en &&
+            country.names?.fr &&
+            country.regions &&
+            (country.regions[0]?.names?.en === country.names?.en ||
+              country.regions[0]?.names?.fr === country.names?.fr)
+          ) {
+            delete country.regions;
+            console.dir(country, { depth: 4, colors: true });
+          }
+
+          await this.saveAlcoholCountry(alcohol, country);
+        }
+      } else {
+        console.log(`${alcohol.country?.names?.en} undefined!`);
+      }
+    }
   }
 }
