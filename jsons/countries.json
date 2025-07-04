@@ -62,7 +62,8 @@
           "Ryoma"
         ],
         "gin": [
-          "ROKU"
+          "ROKU",
+          "Etsu"
         ]
       }
     },
@@ -224,6 +225,9 @@
           "Edradour",
           "Cù Bòcan",
           "Ian Macleod"
+        ],
+        "gin": [
+          "Hendrick's"
         ]
       }
     },
@@ -579,7 +583,12 @@
         "Waterloo",
         "Brugse Whisky Company",
         "Wilderen"
-      ]
+      ],
+      "brands": {
+        "gin": [
+          "Copperhead"
+        ]
+      }
     },
     {
       "nationalities": [
@@ -598,6 +607,9 @@
       ],
       "brands": {
         "whisky": [
+          "Scapegrace"
+        ],
+        "gin": [
           "Scapegrace"
         ]
       }
@@ -621,6 +633,10 @@
         ],
         "rhum": [
           "Mhoba"
+        ],
+        "gin": [
+          "Inverroche",
+          "Bayab"
         ]
       }
     },
@@ -654,7 +670,8 @@
           "St. Killian"
         ],
         "gin": [
-          "MONKEY 47"
+          "MONKEY 47",
+          "Elephant Gin"
         ]
       }
     },
@@ -684,6 +701,9 @@
           "Amrut",
           "Paul John",
           "Rampur"
+        ],
+        "gin": [
+          "Jaisalmer"
         ]
       }
     },
@@ -1094,6 +1114,14 @@
         ],
         "rhum": [
           "Ableforth's"
+        ],
+        "gin": [
+          "Whitley Neill",
+          "London Hill",
+          "Brockmans",
+          "Tarquin's Gin",
+          "Gordon's",
+          "Bombay Sapphire"
         ]
       }
     },
@@ -1457,6 +1485,22 @@
         "rhum": [
           "Dzama",
           "Clairin"
+        ]
+      }
+    },
+    {
+      "nationalities": [
+        "sri lankais",
+        "sri lankaise"
+      ],
+      "country": {
+        "en": "Sri Lanka",
+        "fr": "Sri Lanka"
+      },
+      "whiskyDistilleries": [],
+      "brands": {
+        "gin": [
+          "Colombo"
         ]
       }
     }
