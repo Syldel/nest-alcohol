@@ -8,12 +8,14 @@ import {
 } from '../country/country.service';
 import { CountryInfo } from './entities/country-info.entity';
 import { AlcoholDocument } from './entities/alcohol.entity';
+import { UtilsService } from '@services/utils.service';
 
 @Injectable()
 export class AlcoholMaintenanceService implements OnModuleInit {
   constructor(
     private readonly alcoholService: AlcoholService,
     private readonly countryService: CountryService,
+    private readonly utilsService: UtilsService,
   ) {}
 
   async onModuleInit() {
@@ -21,6 +23,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
     if (args.includes('--maintenance')) {
       await this.fixMissingFrenchNames();
       await this.fixMissingCountryIsoCodes();
+      await this.formatMarqueDetails();
     }
   }
 
@@ -261,6 +264,44 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         }
       } else {
         console.log(`${alcohol.country?.names?.en} undefined!`);
+      }
+    }
+  }
+
+  private async formatMarqueDetails(): Promise<void> {
+    const alcohols = await this.alcoholService.getAll();
+
+    console.log(
+      `[Maintenance] ${alcohols.length} alcohols found with Marque legend`,
+    );
+
+    for (const alcohol of alcohols) {
+      let updated = false;
+      let oldMarqueValue = '';
+
+      for (let i = 0; i < alcohol.details.length; i++) {
+        const detail = alcohol.details[i];
+        if (detail.legend === 'Marque' && typeof detail.value === 'string') {
+          const capitalized = this.utilsService.capitalizeWords(detail.value);
+
+          if (capitalized !== detail.value) {
+            oldMarqueValue = detail.value;
+            detail.value = capitalized;
+            updated = true;
+            alcohol.markModified(`details.${i}.value`);
+          }
+        }
+      }
+
+      if (updated) {
+        const savedAlcohol = await alcohol.save();
+        const marqueDetail = savedAlcohol.details.find(
+          (d) => d.legend === 'Marque',
+        );
+        console.log(
+          `✔ Updated ASIN: ${alcohol.asin} (${oldMarqueValue} => ${marqueDetail?.value})`,
+        );
+        await new Promise((res) => setTimeout(res, 500));
       }
     }
   }

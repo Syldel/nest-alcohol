@@ -300,4 +300,13 @@ export class AlcoholService extends BaseService {
       })
       .exec();
   }
+
+  /**
+   * Retrieves all Alcohol documents from the database.
+   *
+   * @returns {Promise<AlcoholDocument[]>} A promise that resolves to an array of all Alcohol documents.
+   */
+  async getAll(): Promise<AlcoholDocument[]> {
+    return this.alcoholModel.find().exec();
+  }
 }
