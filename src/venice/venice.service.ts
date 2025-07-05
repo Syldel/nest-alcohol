@@ -5,7 +5,7 @@ import {
   HttpClientService,
   HttpRequestInit,
 } from '@services/http-client.service';
-import { UtilsService } from '@services/utils.service';
+import { ELogColor, UtilsService } from '@services/utils.service';
 
 @Injectable()
 export class VeniceService {
@@ -22,7 +22,7 @@ export class VeniceService {
   }
 
   public async getModels(attempt = 1): Promise<any> {
-    console.log('\x1b[35m' + `Venice => Get models` + '\x1b[0m');
+    this.utilsService.coloredLog(ELogColor.FgMagenta, `Venice => Get models`);
 
     const maxRetries = 2;
     const retryDelay = 60000;
@@ -56,7 +56,10 @@ export class VeniceService {
   }
 
   public async chatCompletions(prompt: string, attempt = 1): Promise<any> {
-    console.log('\x1b[35m' + `Venice => Chat completions` + '\x1b[0m');
+    this.utilsService.coloredLog(
+      ELogColor.FgMagenta,
+      `Venice => Chat completions`,
+    );
 
     const maxRetries = 2;
     const retryDelay = 60000;

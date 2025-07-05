@@ -16,6 +16,7 @@ import {
   HuggingFaceService,
 } from '../huggingface/huggingface.service';
 import { VeniceService } from '../venice/venice.service';
+import { MistralService } from '../mistral/mistral.service';
 import {
   Country,
   CountryService,
@@ -100,6 +101,7 @@ export class ExploreService implements OnModuleInit {
     private readonly huggingFaceService: HuggingFaceService,
     private readonly countryService: CountryService,
     private readonly veniceService: VeniceService,
+    private readonly mistralService: MistralService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
@@ -1554,7 +1556,71 @@ export class ExploreService implements OnModuleInit {
       'No country data found in title (with mapping)!',
     );
 
-    /* ******************************* STEP 4 : VENICE AI *********************************/
+    /* ******************************* STEP : MISTRAL AI (api.mistral.ai) *********************************/
+
+    if (!finalCountry) {
+      /* ****************************** MISTRAL AI ************************************** */
+      // Donne aussi le drapeau (flag) en "Emoji Unicode", tel que {"flag": "🇺🇸"}, la valeur doit comporter uniquement des caractères unicode.
+      // N'oublie pas de prendre en considération les sous régions, comme les états américains, le Code ISO 3166-2 (sub) pour le Tennessee est : US-TN. Pour la Grande-Bretagne, le Code ISO 3166-2 (sub) pour le l'Écosse est : GB-SCT.
+      const prompt = `Guess what is the manufacturer country (distillery) about this product : title: "${productTitle}", description 1: "${textDescription}", description 2: "${descDecompressedText}". Give me the country name in english and french with the code alpha2 and alpha3 (ISO 3166-1), et si il y a une sous région, peux tu aussi donner le code comme SCT pour Scotland (ISO 3166-2).
+      Donne moi les infos sous forme d'objet json, uniquement les infos de pays sous forme {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Scotland","fr":"Écosse"},"iso":"SCT"}]}, autres exemples : {"iso":"GB","iso3":"GBR","names":{"en":"United Kingdom","fr":"Royaume-Uni"},"regions":[{"names":{"en":"Wales","fr":"Pays de Galles"},"iso":"WLS"}]} ou {"iso":"US","iso3":"USA","names":{"en":"United States","fr":"États-Unis"},"regions":[{"names":{"en":"Kentucky","fr":"Kentucky"},"iso":"KY"}]} ou {"names": {"en": "Japan", "fr": "Japon"}, "iso": "JP", "iso3": "JPN"}, précise absolument le résultat de cette manière : \`\`\`json {} \`\`\`. L'ouverture et la fermeture doivent absolument comporter trois apostrophes comme \`\`\`.
+      Le "regions" est optionnel.`;
+
+      const mistralResult = await this.mistralService.chatCompletions(
+        { prompt },
+        1,
+      );
+
+      console.log(
+        'Mistral message content:',
+        mistralResult?.choices[0]?.message?.content,
+      );
+
+      if (mistralResult?.choices[0]?.message?.content) {
+        const generatedText = mistralResult?.choices[0]?.message?.content;
+        const optimizedAnswerText = generatedText.replace(prompt, '');
+        const mistralCountries: CountryInfo[] =
+          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+        console.log('mistralCountries?.length:', mistralCountries?.length);
+        const mistralFinalCountry = mistralCountries.find(
+          (country) => Object.keys(country).length > 0,
+        );
+
+        if (mistralFinalCountry) {
+          const searchFoundCountry = async (lang = 'en') => {
+            let countryToSearch = mistralFinalCountry?.names[lang];
+            if (mistralFinalCountry?.regions?.length > 1) {
+              this.coloredLog(ELogColor.FgRed, 'Several regions are found!');
+              // TODO: Maybe choose a region
+              // return null;
+            }
+
+            if (mistralFinalCountry?.regions?.length === 1) {
+              countryToSearch = mistralFinalCountry?.regions[0].names[lang];
+            }
+
+            console.log(
+              'countryToSearch:',
+              this.coloredText(ELogColor.FgYellow, countryToSearch),
+            );
+
+            foundCountries = await this.countryService.searchCountriesOrRegions(
+              countryToSearch,
+              { ...filterOptions, ...{ searchInText: true } },
+            );
+
+            return await this.selectCountry(foundCountries);
+          };
+
+          finalCountry = await searchFoundCountry('en');
+          if (!finalCountry) {
+            finalCountry = await searchFoundCountry('fr');
+          }
+        }
+      }
+    }
+
+    /* ******************************* STEP : VENICE AI *********************************/
 
     if (!finalCountry) {
       /* ****************************** VENICE AI ************************************** */
@@ -1615,7 +1681,7 @@ export class ExploreService implements OnModuleInit {
       }
     }
 
-    /* ******************************* STEP 5 : MISTRAL AI *********************************/
+    /* ******************************* STEP : MISTRAL AI (WITH HUGGING FACE) *********************************/
 
     if (!finalCountry) {
       /* ****************************** MISTRAL AI ************************************** */

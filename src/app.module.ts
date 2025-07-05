@@ -15,6 +15,7 @@ import { CountryModule } from './country/country.module';
 import { SharedModule } from './services/shared.module';
 import { BackupModule } from './backup/backup.module';
 import { VeniceModule } from './venice/venice.module';
+import { MistralModule } from './mistral/mistral.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -36,6 +37,7 @@ const isProduction = process.env.NODE_ENV === 'production';
     CompressModule,
     HuggingFaceModule,
     VeniceModule,
+    MistralModule,
     CountryModule,
     SharedModule,
     BackupModule,

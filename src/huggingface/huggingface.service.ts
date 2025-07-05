@@ -5,7 +5,7 @@ import {
   HttpClientService,
   HttpRequestInit,
 } from '@services/http-client.service';
-import { UtilsService } from '@services/utils.service';
+import { ELogColor, UtilsService } from '@services/utils.service';
 
 export enum EHFModel {
   DSLIM = 'DSLIM',
@@ -41,8 +41,9 @@ export class HuggingFaceService {
     modelKey: EHFModel,
     attempt = 1,
   ): Promise<any> {
-    console.log(
-      '\x1b[35m' + `HuggingFace => analyze text with ${modelKey}` + '\x1b[0m',
+    this.utilsService.coloredLog(
+      ELogColor.FgMagenta,
+      `HuggingFace => analyze text with ${modelKey}`,
     );
 
     const maxRetries = 2;

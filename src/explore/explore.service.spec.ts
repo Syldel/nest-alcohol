@@ -10,6 +10,7 @@ import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
 import { VeniceService } from '../venice/venice.service';
+import { MistralService } from '../mistral/mistral.service';
 import { CountryService, FilterOptions } from '../country/country.service';
 
 jest.mock('@clack/prompts', () => ({
@@ -22,6 +23,7 @@ describe('ExploreService', () => {
   let countryService: CountryService;
   let huggingFaceService: HuggingFaceService;
   let veniceService: VeniceService;
+  let mistralService: MistralService;
   let alcoholServiceMock: jest.Mocked<AlcoholService>;
 
   beforeAll(async () => {
@@ -47,6 +49,7 @@ describe('ExploreService', () => {
         CompressService,
         HuggingFaceService,
         VeniceService,
+        MistralService,
         CountryService,
       ],
     }).compile();
@@ -55,6 +58,7 @@ describe('ExploreService', () => {
     countryService = app.get<CountryService>(CountryService);
     huggingFaceService = app.get<HuggingFaceService>(HuggingFaceService);
     veniceService = app.get<VeniceService>(VeniceService);
+    mistralService = app.get<MistralService>(MistralService);
   });
 
   describe('extractASIN', () => {
@@ -850,12 +854,14 @@ describe('ExploreService', () => {
     let findMatchesSpy: jest.SpyInstance;
     let huggingFaceAnalyzeSpy: jest.SpyInstance;
     let veniceChatSpy: jest.SpyInstance;
+    let mistralChatSpy: jest.SpyInstance;
 
     beforeEach(() => {
       if (searchCountrySpy) searchCountrySpy.mockClear();
       if (findMatchesSpy) findMatchesSpy.mockClear();
       if (huggingFaceAnalyzeSpy) huggingFaceAnalyzeSpy.mockClear();
       if (veniceChatSpy) veniceChatSpy.mockClear();
+      if (mistralChatSpy) mistralChatSpy.mockClear();
     });
 
     it('should extract country information when country detail is present', async () => {
@@ -1003,6 +1009,10 @@ describe('ExploreService', () => {
 
       veniceChatSpy = jest
         .spyOn(veniceService as any, 'chatCompletions')
+        .mockReturnValueOnce(null);
+
+      mistralChatSpy = jest
+        .spyOn(mistralService as any, 'chatCompletions')
         .mockReturnValueOnce(null);
 
       const huggingFaceResult = [

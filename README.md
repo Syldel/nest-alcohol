@@ -226,6 +226,12 @@ JSON response :
 ]
 ```
 
+## MISTRAL AI (api.mistral.ai)
+
+```sh
+curl -X POST http://localhost:3000/mistral/chat -H "Content-Type: application/json" -d "{\"prompt\":\"Who is the best French painter? Answer in one short sentence.\",\"temperature\":0.7,\"max_tokens\":150}"
+```
+
 ## Countries
 
 ```sh
