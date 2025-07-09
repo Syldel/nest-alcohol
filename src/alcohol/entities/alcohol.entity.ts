@@ -12,6 +12,7 @@ import { FamilyLink } from './family-link.entity';
 import { Reviews } from './reviews.entity';
 import { Details } from './details.entity';
 import { CountryInfo } from './country-info.entity';
+import { AIContent } from './ai-content.entity';
 
 export type AlcoholDocument = Alcohol & Document;
 
@@ -85,6 +86,10 @@ export class Alcohol {
   @Field(() => CountryInfo, { nullable: true })
   @Prop({ type: CountryInfo, required: false })
   country?: CountryInfo;
+
+  @Field(() => AIContent, { nullable: true })
+  @Prop({ type: AIContent, default: {} })
+  ai?: AIContent;
 
   @Field(() => Date)
   @Prop()

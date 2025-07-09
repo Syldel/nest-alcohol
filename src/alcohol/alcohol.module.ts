@@ -6,11 +6,13 @@ import { AlcoholResolver } from './alcohol.resolver';
 import { AlcoholService } from './alcohol.service';
 import { AlcoholMaintenanceService } from './alcohol-maintenance.service';
 import { CountryModule } from '../country/country.module';
+import { MistralModule } from 'src/mistral/mistral.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Alcohol.name, schema: AlcoholSchema }]),
     CountryModule,
+    MistralModule,
   ],
   providers: [AlcoholService, AlcoholResolver, AlcoholMaintenanceService],
   exports: [MongooseModule, AlcoholService],

@@ -77,47 +77,6 @@ export class HuggingFaceService {
     }
   }
 
-  public extractCodeBlocks(input: any): any[] {
-    if (!input) {
-      return null;
-    }
-
-    let generatedText: string;
-    if (typeof input === 'string') {
-      generatedText = input;
-    } else {
-      generatedText =
-        input.length > 0 ? input[0].generated_text : input?.generated_text;
-    }
-
-    if (!generatedText) {
-      return null;
-    }
-
-    const jsonMatches = generatedText.match(/```[^{`]*({[\s\S]*?})[^}`]*```/gm);
-
-    if (jsonMatches) {
-      const parsedData = jsonMatches
-        .map((block) => {
-          // Pour chaque bloc JSON, on enlève les backticks et la balise "json"
-          const jsonString = block.replace(/```json\s*|\s*```/g, '').trim();
-
-          try {
-            const dataInfo = JSON.parse(jsonString);
-            return dataInfo;
-          } catch (error) {
-            console.error('Erreur lors du parsing du JSON:', error);
-            return null;
-          }
-        })
-        .filter((item) => item !== null);
-
-      return parsedData;
-    } else {
-      return [];
-    }
-  }
-
   public transformEntities(data: { entity_group: string; word: string }[]) {
     if (!data) {
       return {};

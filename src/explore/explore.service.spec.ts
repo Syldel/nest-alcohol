@@ -11,6 +11,7 @@ import { CompressService } from '../compress/compress.service';
 import { HuggingFaceService } from '../huggingface/huggingface.service';
 import { VeniceService } from '../venice/venice.service';
 import { MistralService } from '../mistral/mistral.service';
+import { AiUtilsService } from '@services/ai-utils.service';
 import { CountryService, FilterOptions } from '../country/country.service';
 
 jest.mock('@clack/prompts', () => ({
@@ -50,6 +51,7 @@ describe('ExploreService', () => {
         HuggingFaceService,
         VeniceService,
         MistralService,
+        AiUtilsService,
         CountryService,
       ],
     }).compile();

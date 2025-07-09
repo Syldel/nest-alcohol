@@ -9,6 +9,9 @@ import {
 import { CountryInfo } from './entities/country-info.entity';
 import { AlcoholDocument } from './entities/alcohol.entity';
 import { UtilsService } from '@services/utils.service';
+import { AiUtilsService } from '@services/ai-utils.service';
+import { MistralService } from '../mistral/mistral.service';
+import { AIContent } from './entities/ai-content.entity';
 
 @Injectable()
 export class AlcoholMaintenanceService implements OnModuleInit {
@@ -16,6 +19,8 @@ export class AlcoholMaintenanceService implements OnModuleInit {
     private readonly alcoholService: AlcoholService,
     private readonly countryService: CountryService,
     private readonly utilsService: UtilsService,
+    private readonly mistralService: MistralService,
+    private readonly aiUtilsService: AiUtilsService,
   ) {}
 
   async onModuleInit() {
@@ -24,6 +29,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
       await this.fixMissingFrenchNames();
       await this.fixMissingCountryIsoCodes();
       await this.formatMarqueDetails();
+      await this.generateAiContents();
     }
   }
 
@@ -271,9 +277,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
   private async formatMarqueDetails(): Promise<void> {
     const alcohols = await this.alcoholService.getAll();
 
-    console.log(
-      `[Maintenance] ${alcohols.length} alcohols found with Marque legend`,
-    );
+    console.log(`[Maintenance] ${alcohols.length} alcohols found`);
 
     for (const alcohol of alcohols) {
       let updated = false;
@@ -304,5 +308,181 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         await new Promise((res) => setTimeout(res, 500));
       }
     }
+  }
+
+  private async generateAiContents(): Promise<void> {
+    const alcohols = await this.alcoholService.getAll();
+
+    console.log(
+      `[Maintenance] (AI contents) ${alcohols.length} alcohols found`,
+    );
+
+    function isEmptyAI(ai?: AIContent): boolean {
+      if (!ai) return true;
+      return (
+        !ai.metaTitle &&
+        !ai.metaDescription &&
+        !ai.description &&
+        (!ai.details || ai.details.length === 0)
+      );
+    }
+
+    let i = 0;
+    const total = alcohols.length;
+    for (const alcohol of alcohols) {
+      i++;
+      if (alcohol.ai && !isEmptyAI(alcohol.ai)) {
+        console.log(
+          `[${i}/${total}] ${alcohol.asin} alcohol.ai already exists!`,
+        );
+        continue;
+      }
+
+      const detailsOneLiner =
+        alcohol.details?.map((d) => `${d.legend}: ${d.value}`).join(', ') || '';
+
+      const featuresStr = alcohol.features?.join(', ') || '';
+
+      const description = alcohol.description?.product || '';
+
+      const countryName = alcohol.country
+        ? alcohol.country.names?.fr || alcohol.country.names?.en || ''
+        : '';
+
+      const regionName = alcohol.country?.regions?.[0]
+        ? alcohol.country.regions[0].names?.fr ||
+          alcohol.country.regions[0].names?.en ||
+          ''
+        : '';
+
+      // Donne également **features** qui correspond aux "Caractéristiques", sous forme de array de strings ["...", "..."].
+      // "features": ["...", "..."],
+
+      // Ajoute un parapgraphe sur la brasserie, marque ou distillerie dans **producer**.
+      // "producer": "...",
+
+      const prompt = `
+        Tu es un expert en rédaction SEO.
+        À partir des informations suivantes sur un spiritueux, génère un **meta title** et une **meta description** optimisés pour le référencement (SEO) (en français).
+        Donne surtout **description** qui correspond à "Description produit" et qui doit comporter le même nombre de paragraphes ou plus.
+        Sous forme [{ legend: "...", value: "..."}], mettre dans **details**, les principales caractéristiques comme: Marque, Type, Volume, Degré, Saveur, Pays, Région, Spécificité.
+
+        Les règles :
+        - Le **meta title** doit faire moins de 70 caractères.
+        - La **meta description** doit faire moins de 160 caractères.
+        - Utilise un ton naturel, clair et vendeur.
+        - Ne répète pas mécaniquement les mots-clés, varie la formulation.
+        - Mets en avant les spécificités du produit (marque, type, origine, volume, particularités).
+        - éviter le "duplicate content".
+        - éviter le "low-quality AI content".
+        - Les textes doivent être factuellement exacts. Utilisez uniquement les informations fournies. Reformulez ou paraphrasez pour améliorer la lisibilité, mais n'inventez aucune information.
+        - Utiliser des balises HTML comme <p></p> pour séparer les paragraphes.
+
+        Les données produit :
+        - Nom : "${alcohol.name}"
+        - Type : "${alcohol.type}"
+        - Pays : "${countryName}"
+        - Région : "${regionName}"
+        - Description produit : "${description}"
+        - Détails : "${detailsOneLiner}"
+        - Caractéristiques : "${featuresStr}"
+
+        Réponds **uniquement** avec un objet JSON, sans autre texte, au format suivant :
+
+        \`\`\`json
+        {
+          "metaTitle": "...",
+          "metaDescription": "...",
+          "description": "...",
+          "details": [{ legend: "...", value: "..."}]
+        }
+        \`\`\`
+
+        N'oublie surtout pas les trois quotes (\`) au début et à la fin.
+      `;
+
+      const mistralResult = await this.mistralService.chatCompletions(
+        { prompt }, // , max_tokens: 1500
+        1,
+      );
+
+      // console.dir(mistralResult, { depth: 5, colors: true });
+      // console.log('Mistral message content:', mistralResult?.fullContent);
+
+      if (mistralResult?.fullContent) {
+        const generatedText = mistralResult?.fullContent;
+        const optimizedAnswerText = generatedText.replace(prompt, '');
+        const mistralData =
+          this.aiUtilsService.extractCodeBlocks(optimizedAnswerText);
+
+        console.dir(mistralData, { depth: 5, colors: true });
+
+        if (mistralData.length === 1) {
+          if (this.isValidAIContent(mistralData[0])) {
+            alcohol.ai = mistralData[0];
+            await alcohol.save();
+            console.log(`[${i}/${total}] ✔ ${alcohol.asin} alcohol.ai saved!`);
+            await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+          } else {
+            console.error('BREAK mistralData is not valid');
+            break;
+          }
+        } else {
+          console.error('BREAK mistralData.length:', mistralData.length);
+          break;
+        }
+      } else {
+        console.error(
+          'BREAK mistralResult.fullContent:',
+          mistralResult?.fullContent,
+        );
+        break;
+      }
+    }
+  }
+
+  private isValidAIContent(ai: any): boolean {
+    if (typeof ai !== 'object' || ai === null) return false;
+
+    const allowedKeys = [
+      'metaTitle',
+      'metaDescription',
+      'description',
+      'details',
+    ];
+    const actualKeys = Object.keys(ai);
+
+    // Vérifie que toutes les clés présentes sont valides
+    if (!actualKeys.every((key) => allowedKeys.includes(key))) {
+      return false;
+    }
+
+    // Vérifie le type des champs simples (optionnel mais recommandé)
+    if (
+      (ai.metaTitle && typeof ai.metaTitle !== 'string') ||
+      (ai.metaDescription && typeof ai.metaDescription !== 'string') ||
+      (ai.description && typeof ai.description !== 'string')
+    ) {
+      return false;
+    }
+
+    // Vérifie les objets dans le tableau details
+    if (ai.details) {
+      if (!Array.isArray(ai.details)) return false;
+
+      for (const item of ai.details) {
+        if (
+          typeof item !== 'object' ||
+          item === null ||
+          Object.keys(item).length !== 2 ||
+          !('legend' in item) ||
+          !('value' in item)
+        ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 }

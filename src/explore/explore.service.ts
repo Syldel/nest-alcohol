@@ -8,6 +8,7 @@ import { cancel, confirm, isCancel, select, text } from '@clack/prompts';
 
 import { ELogColor, UtilsService } from '@services/utils.service';
 import { JsonService } from '@services/json.service';
+import { AiUtilsService } from '@services/ai-utils.service';
 
 import { AlcoholService } from '../alcohol/alcohol.service';
 import { CompressService } from '../compress/compress.service';
@@ -102,6 +103,7 @@ export class ExploreService implements OnModuleInit {
     private readonly countryService: CountryService,
     private readonly veniceService: VeniceService,
     private readonly mistralService: MistralService,
+    private readonly aiUtilsService: AiUtilsService,
   ) {
     this.websiteExploreHost = this.configService.get<string>(
       'WEBSITE_EXPLORE_HOST',
@@ -1571,16 +1573,13 @@ export class ExploreService implements OnModuleInit {
         1,
       );
 
-      console.log(
-        'Mistral message content:',
-        mistralResult?.choices[0]?.message?.content,
-      );
+      console.log('Mistral message content:', mistralResult?.fullContent);
 
-      if (mistralResult?.choices[0]?.message?.content) {
-        const generatedText = mistralResult?.choices[0]?.message?.content;
+      if (mistralResult?.fullContent) {
+        const generatedText = mistralResult?.fullContent;
         const optimizedAnswerText = generatedText.replace(prompt, '');
         const mistralCountries: CountryInfo[] =
-          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+          this.aiUtilsService.extractCodeBlocks(optimizedAnswerText);
         console.log('mistralCountries?.length:', mistralCountries?.length);
         const mistralFinalCountry = mistralCountries.find(
           (country) => Object.keys(country).length > 0,
@@ -1641,7 +1640,7 @@ export class ExploreService implements OnModuleInit {
         const generatedText = veniceResult?.choices[0]?.message?.content;
         const optimizedAnswerText = generatedText.replace(prompt, '');
         const veniceCountries: CountryInfo[] =
-          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+          this.aiUtilsService.extractCodeBlocks(optimizedAnswerText);
         console.log('veniceCountries?.length:', veniceCountries?.length);
         const veniceFinalCountry = veniceCountries.find(
           (country) => Object.keys(country).length > 0,
@@ -1698,7 +1697,7 @@ export class ExploreService implements OnModuleInit {
         const generatedText = mistralResult[0]?.generated_text;
         const optimizedAnswerText = generatedText.replace(prompt, '');
         const mistralCountries: CountryInfo[] =
-          this.huggingFaceService.extractCodeBlocks(optimizedAnswerText);
+          this.aiUtilsService.extractCodeBlocks(optimizedAnswerText);
         console.log('mistralCountries?.length:', mistralCountries?.length);
         const mistralFinalCountry = mistralCountries.find(
           (country) => Object.keys(country).length > 0,
@@ -2556,8 +2555,7 @@ export class ExploreService implements OnModuleInit {
 
     if (veniceResult?.choices[0]?.message?.content) {
       const generatedText = veniceResult?.choices[0]?.message?.content;
-      const aiBrandArr =
-        this.huggingFaceService.extractCodeBlocks(generatedText);
+      const aiBrandArr = this.aiUtilsService.extractCodeBlocks(generatedText);
       const veniceFinalBrand = aiBrandArr.find(
         (brand) => Object.keys(brand).length > 0,
       );
