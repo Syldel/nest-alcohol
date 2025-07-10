@@ -323,7 +323,13 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         !ai.metaTitle &&
         !ai.metaDescription &&
         !ai.description &&
-        (!ai.details || ai.details.length === 0)
+        !ai.slug &&
+        !ai.h1 &&
+        (!ai.keywords || ai.keywords.length === 0) &&
+        (!ai.details || ai.details.length === 0) &&
+        (!ai.faq || ai.faq.length === 0) &&
+        (!ai.og || (!ai.og.title && !ai.og.description)) &&
+        (!ai.cocktails || ai.cocktails.length === 0)
       );
     }
 
@@ -366,6 +372,15 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         À partir des informations suivantes sur un spiritueux, génère un **meta title** et une **meta description** optimisés pour le référencement (SEO) (en français).
         Donne surtout **description** qui correspond à "Description produit" et qui doit comporter le même nombre de paragraphes ou plus.
         Sous forme [{ legend: "...", value: "..."}], mettre dans **details**, les principales caractéristiques comme: Marque, Type, Volume, Degré, Saveur, Pays, Région, Spécificité.
+        Ajouter à l'objet JSON:
+        - **slug** : une URL simplifiée, en kebab-case, sans caractères spéciaux
+        - **h1** : un titre H1 unique et engageant
+        - **keywords** : un tableau de 5 à 8 mots-clés pertinents (sans balise HTML)
+        - **og** : un objet contenant
+          - **title** : le titre pour Open Graph (peut être différent du metaTitle)
+          - **description** : la description Open Graph (max 200 caractères)
+        - **faq** : un tableau de 2 à 5 questions-réponses optimisées pour les featured snippets
+        - **cocktails** : Propose 2 à 3 recettes de cocktails utilisant cet alcool. Chaque cocktail doit contenir un nom, une liste d'ingrédients (en bullet points), et une description de la préparation.
 
         Les règles :
         - Le **meta title** doit faire moins de 70 caractères.
@@ -376,7 +391,7 @@ export class AlcoholMaintenanceService implements OnModuleInit {
         - éviter le "duplicate content".
         - éviter le "low-quality AI content".
         - Les textes doivent être factuellement exacts. Utilisez uniquement les informations fournies. Reformulez ou paraphrasez pour améliorer la lisibilité, mais n'inventez aucune information.
-        - Utiliser des balises HTML comme <p></p> pour séparer les paragraphes.
+        - Pour **description**, utiliser des balises HTML comme <p></p> pour séparer les paragraphes.
 
         Les données produit :
         - Nom : "${alcohol.name}"
@@ -394,7 +409,13 @@ export class AlcoholMaintenanceService implements OnModuleInit {
           "metaTitle": "...",
           "metaDescription": "...",
           "description": "...",
-          "details": [{ legend: "...", value: "..."}]
+          "details": [{ "legend": "...", "value": "..."}],
+          "slug": "...",
+          "h1": "...",
+          "keywords: ["...", "..."],
+          "og": { "title": "...", "description": "..."},
+          "faq": [{ "question": "...", "answer": "..."}],
+          "cocktails": [{"title": "...", "ingredients": ["...", "..."], "instructions": "..."}]
         }
         \`\`\`
 
@@ -402,12 +423,9 @@ export class AlcoholMaintenanceService implements OnModuleInit {
       `;
 
       const mistralResult = await this.mistralService.chatCompletions(
-        { prompt }, // , max_tokens: 1500
+        { prompt, max_tokens: 1500 },
         1,
       );
-
-      // console.dir(mistralResult, { depth: 5, colors: true });
-      // console.log('Mistral message content:', mistralResult?.fullContent);
 
       if (mistralResult?.fullContent) {
         const generatedText = mistralResult?.fullContent;
@@ -449,34 +467,98 @@ export class AlcoholMaintenanceService implements OnModuleInit {
       'metaDescription',
       'description',
       'details',
+      'slug',
+      'h1',
+      'keywords',
+      'faq',
+      'og',
+      'cocktails',
     ];
-    const actualKeys = Object.keys(ai);
 
-    // Vérifie que toutes les clés présentes sont valides
+    const actualKeys = Object.keys(ai);
     if (!actualKeys.every((key) => allowedKeys.includes(key))) {
       return false;
     }
 
-    // Vérifie le type des champs simples (optionnel mais recommandé)
-    if (
-      (ai.metaTitle && typeof ai.metaTitle !== 'string') ||
-      (ai.metaDescription && typeof ai.metaDescription !== 'string') ||
-      (ai.description && typeof ai.description !== 'string')
-    ) {
-      return false;
+    // Champs simples
+    const stringFields = [
+      'metaTitle',
+      'metaDescription',
+      'description',
+      'slug',
+      'h1',
+    ];
+    for (const field of stringFields) {
+      if (
+        field in ai &&
+        ai[field] !== undefined &&
+        typeof ai[field] !== 'string'
+      ) {
+        return false;
+      }
     }
 
-    // Vérifie les objets dans le tableau details
-    if (ai.details) {
+    // Keywords: array of strings
+    if ('keywords' in ai) {
+      if (!Array.isArray(ai.keywords)) return false;
+      if (!ai.keywords.every((k: any) => typeof k === 'string')) return false;
+    }
+
+    // Details: array of { legend, value }
+    if ('details' in ai) {
       if (!Array.isArray(ai.details)) return false;
 
       for (const item of ai.details) {
         if (
           typeof item !== 'object' ||
           item === null ||
-          Object.keys(item).length !== 2 ||
-          !('legend' in item) ||
-          !('value' in item)
+          typeof item.legend !== 'string' ||
+          typeof item.value !== 'string'
+        ) {
+          return false;
+        }
+      }
+    }
+
+    // FAQ: array of { question, answer }
+    if ('faq' in ai) {
+      if (!Array.isArray(ai.faq)) return false;
+
+      for (const item of ai.faq) {
+        if (
+          typeof item !== 'object' ||
+          item === null ||
+          typeof item.question !== 'string' ||
+          typeof item.answer !== 'string'
+        ) {
+          return false;
+        }
+      }
+    }
+
+    // OG: { title, description }
+    if ('og' in ai) {
+      if (
+        typeof ai.og !== 'object' ||
+        ai.og === null ||
+        typeof ai.og.title !== 'string' ||
+        typeof ai.og.description !== 'string'
+      ) {
+        return false;
+      }
+    }
+
+    if ('cocktails' in ai) {
+      if (!Array.isArray(ai.cocktails)) return false;
+
+      for (const cocktail of ai.cocktails) {
+        if (
+          typeof cocktail !== 'object' ||
+          cocktail === null ||
+          typeof cocktail.title !== 'string' ||
+          !Array.isArray(cocktail.ingredients) ||
+          cocktail.ingredients.some((i) => typeof i !== 'string') ||
+          typeof cocktail.instructions !== 'string'
         ) {
           return false;
         }

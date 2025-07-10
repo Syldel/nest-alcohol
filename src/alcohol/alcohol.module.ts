@@ -6,7 +6,7 @@ import { AlcoholResolver } from './alcohol.resolver';
 import { AlcoholService } from './alcohol.service';
 import { AlcoholMaintenanceService } from './alcohol-maintenance.service';
 import { CountryModule } from '../country/country.module';
-import { MistralModule } from 'src/mistral/mistral.module';
+import { MistralModule } from '../mistral/mistral.module';
 
 @Module({
   imports: [
