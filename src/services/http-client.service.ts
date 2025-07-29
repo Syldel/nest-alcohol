@@ -13,7 +13,7 @@ export class HttpClientService {
     try {
       const response = await fetch(url, options);
 
-      if (response?.status === 200) {
+      if (response?.status === 200 || response?.status === 201) {
         console.log('✅ status:', '\x1b[32m' + response.status + '\x1b[0m');
       } else {
         console.log('❌ status:', '\x1b[31m' + response?.status + '\x1b[0m');
